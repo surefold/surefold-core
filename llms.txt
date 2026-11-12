@@ -29,7 +29,7 @@ Facts worth having before anything else:
 
 ## Modules
 
-- `surefold`: `scope`, `parZip`, `parMap`, `traverse`, `parTraverse`, `raceN`, `zipOrAccumulate`,
+- `surefold`: `scope`, `parZip`, `parMap`, `traverse`, `parTraverse`, `raceN`, `channel`, `select`, `zipOrAccumulate`,
   `mapOrAccumulate`, `accumulate { }`, `resourceScope`, `Schedule`,
   `timeout`, `policy` (retry, circuit breaker, bulkhead, rate limiter),
   `SurefoldLocal`, `Clock`, `TestClock`, the log and metrics calls,

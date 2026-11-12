@@ -66,6 +66,9 @@ and carries no context. Surefold adds:
   undoing anything ([core guide](docs/core.md#sagas)).
 - **Shared state without locks.** `transact { }` changes several `Shared`
   values as one step, waits until the state allows it, and never deadlocks.
+- **Channels and `select`.** A bounded `channel` hands values between forks
+  of one scope, and `select { }` waits on several channels and forks at once
+  ([core guide](docs/core.md#handing-values-between-forks)).
 - **Context that crosses forks.** Log annotations, metric tags, trace context
   and the clock are inherited by every fork, so a correlation id or a test
   clock reaches the branches of a `parMap`.
