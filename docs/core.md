@@ -25,11 +25,12 @@ are compiled by `CoreGuidesSuite`, against the core alone.
 7. [Schedules, retries and timeouts](#schedules-retries-and-timeouts)
 8. [Policies](#policies)
 9. [Values changed together](#values-changed-together)
-10. [What a fork inherits](#what-a-fork-inherits)
-11. [Running forks on Pekko](#running-forks-on-pekko)
-12. [Cache retention](#cache-retention)
-13. [Cache release](#cache-release)
-14. [Requirements and limitations](#requirements-and-limitations)
+10. [Handing values between forks](#handing-values-between-forks)
+11. [What a fork inherits](#what-a-fork-inherits)
+12. [Running forks on Pekko](#running-forks-on-pekko)
+13. [Cache retention](#cache-retention)
+14. [Cache release](#cache-release)
+15. [Requirements and limitations](#requirements-and-limitations)
 
 ## Forking
 
@@ -970,6 +971,183 @@ A run alone is counted with `outcome=solo`. While it runs, every other commit
 waits, so keep a step that may run alone short, and never have it wait on
 another step's commit: alone, that commit waits on it. `soloAfter =
 Int.MAX_VALUE` never runs alone.
+
+## Handing values between forks
+
+A `Deferred` hands over one answer, once. A `channel` hands over many: one fork
+`send`s, another `receive`s or iterates, and at most `capacity` values wait
+between them, so a producer ahead of its consumer parks rather than running
+away (spec 0038).
+
+<!-- core-channel -->
+```kotlin
+import dev.surefold.channel
+import dev.surefold.scope
+
+data class Row(val id: Int)
+
+// Rows read on one fork and written on another, with at most 64 waiting between them.
+fun copy(source: Sequence<Row>, write: (Row) -> Unit) = scope {
+    val rows = channel<Row>(capacity = 64)
+    async {
+        for (row in source) if (!rows.send(row)) break
+        rows.close()
+    }
+    for (row in rows) write(row) // ends once the channel is closed and drained
+}
+
+// The consumer stops early. The producer's next send answers false, and its loop ends.
+fun firstTen(): List<Int> = scope {
+    val numbers = channel<Int>(capacity = 8)
+    async {
+        var n = 0
+        while (numbers.send(n)) n++
+    }
+    numbers.take(10).also { numbers.cancel() }
+}
+```
+
+- **`send`** parks while the channel is full. It answers `true` once the value
+  is in the channel or a receiver's hands, and `false` if the consumer
+  cancelled.
+- **`receive`** parks while the channel is empty, and answers `null` once the
+  channel is closed and drained, or cancelled. A channel is an `Iterable`, so
+  `for`, `map` and `take` read it the same way.
+- **`close()` is the producer's.** It marks the end of the data: a consumer
+  still gets what was sent before it. A later `send` throws
+  `IllegalStateException`.
+- **`cancel()` is the consumer's.** What waits is dropped, and every parked or
+  later `send` answers `false`, so a producer loop ends without an interrupt.
+- **Capacity is required.** Zero hands each value straight from a sender to a
+  receiver. There is no unbounded channel and no broadcast: a second reader is
+  a second channel.
+- **A channel belongs to the scope that opened it**, which cancels it on
+  close. With the Gradle plugin applied, a `Channel` returned from a scope or
+  kept in a property is a compile error.
+- **No error crosses a channel.** A producer that fails or throws fails its
+  fork, and the fork answers the scope as any fork does.
+- **Parking answers an interrupt.** An interrupted `send` leaves the queue
+  first, so no receiver takes a value its sender gave up on.
+
+For a pipeline with stages, a [stream](stream.md) says more with less. A
+channel is the piece underneath: two forks of one scope and a bound.
+
+### Waiting on several things at once
+
+`select { }` waits on every clause it names and runs the first to become
+ready: a value received, a value sent, or a fork ended. It parks once, however
+many clauses there are.
+
+<!-- core-select -->
+```kotlin
+import dev.surefold.channel
+import dev.surefold.scope
+import dev.surefold.select
+import kotlin.time.Duration
+
+data class Row(val id: Int)
+
+// Writes rows until the source ends or the budget runs out, and answers how many it wrote.
+fun copyWithin(budget: Duration, source: Sequence<Row>, write: (Row) -> Unit): Int = scope {
+    val rows = channel<Row>(capacity = 64)
+    async {
+        for (row in source) if (!rows.send(row)) break
+        rows.close()
+    }
+    val deadline = async { Thread.sleep(budget.inWholeMilliseconds) }
+    var written = 0
+    var more = true
+    while (more) {
+        more = select {
+            // Written first, so it wins over a row that is ready at the same time.
+            deadline.onAwait { false }
+            rows.onReceive { row ->
+                if (row != null) {
+                    write(row)
+                    written++
+                }
+                row != null
+            }
+        }
+    }
+    deadline.cancel()
+    rows.cancel()
+    written
+}
+```
+
+- **`onReceive { }`** is handed the next value, or `null` once the channel is
+  closed and drained, or cancelled, as `receive` answers.
+- **`onSend(value) { }`** is told `true` once the value is taken, or `false`
+  if the consumer cancelled.
+- **`onAwait { }`** is handed the fork's answer, as `await()` gives it. Only a
+  fork `async` opened can be selected on.
+- **The first clause written wins a tie.** Clauses ready when `select` is
+  called are tried in order, so a test can rely on which one runs. A channel
+  that always has a value waiting therefore starves the clauses after it: put
+  the clause that must not be missed first.
+- **Losing clauses are unregistered** before the winner's block runs, so a
+  value another clause would have received stays in its channel.
+- **A `select` needs at least one clause.** Interrupted before any wins, it
+  throws `InterruptedException`.
+
+Here `timeoutOrNull` would interrupt `write` partway through a row. The
+`select` lets the row in hand finish and then stops, which is the reason to
+reach for it.
+
+### A value handed over once
+
+A `Promise<E, A>` is completed once, by whoever has the answer: `succeed` or
+`fail` answers `true` for the first caller and `false`, changing nothing, for
+every later one. Every `await()` is answered the same `Either`. A latch is a
+`Promise<Nothing, Unit>`.
+
+That fits several calls racing for one answer. Here every mirror is asked for
+the same page at once, and only one needs to answer:
+
+<!-- core-promise -->
+```kotlin
+import dev.surefold.Promise
+import dev.surefold.Shared
+import dev.surefold.fail.Either
+import dev.surefold.fail.onLeft
+import dev.surefold.fail.onRight
+import dev.surefold.scope
+
+data class Unreachable(val mirror: String)
+
+// The first page back answers. A mirror that fails only drops out, unless every one of them does.
+fun pageFromAny(mirrors: List<String>, fetch: (String) -> Either<Unreachable, String>): Either<Unreachable, String> {
+    require(mirrors.isNotEmpty()) { "a page needs a mirror to come from" }
+    return scope {
+        val page = Promise<Unreachable, String>()
+        val failed = Shared(0)
+        val calls = mirrors.map { mirror ->
+            async {
+                fetch(mirror)
+                    .onRight { page.succeed(it) } // false for every mirror after the first
+                    .onLeft { error ->
+                        val last = failed.modify { n -> (n + 1) to (n + 1 == mirrors.size) }
+                        if (last) page.fail(error)
+                    }
+            }
+        }
+        // The slower calls are no longer wanted: each is interrupted, and the scope waits for none of them.
+        page.await().also { calls.forEach { it.cancel() } }
+    }
+}
+```
+
+- **`await()`** parks until the promise is complete, for as long as the calling
+  scope lives. `await(within)` answers `null` once the time passes, on the
+  clock bound where it is called. `peek()` looks without waiting.
+- **`awaitValue()`** is `await()` for a promise that cannot fail.
+- **A promise is a `Shared` underneath**, so a wait wakes on the commit that
+  completes it and ends when its scope is cancelled, which
+  `CompletableFuture.get()` and `CountDownLatch.await()` do only by interrupt.
+- **`raceN` is the shorter spelling for two or three branches** where the
+  first to finish should win, failure included. A promise is for any number
+  of them, and for choosing which outcomes count.
 
 ## What a fork inherits
 
