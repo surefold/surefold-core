@@ -90,6 +90,15 @@ A dependency added to any module is a build failure, not a judgement call.
 Adding a module: [`docs/agents/new-module.md`](docs/agents/new-module.md) lists
 every place that has to name it.
 
+## Surefold's primitives, not the JDK's
+
+Code here uses what surefold ships, in tests and examples too: `scope`/`async` rather than a `Thread`, `Promise`
+rather than a `CountDownLatch`, `Shared` rather than `synchronized` or a lock, `channel` rather than a
+`BlockingQueue`, `clock` rather than `System.nanoTime`, `testActors` and `explore` rather than real threads and
+retries, `Suite` and `surefold-assert` rather than plain JUnit. The full table is in the plugin's
+[`SKILL.md`](plugins/surefold/skills/surefold/SKILL.md); specs 0307 and 0309 say which files are exempt and why.
+An older test written the other way is not a pattern to copy.
+
 ## Coding standards
 
 Comments, imports, errors, effects and read-only API:
