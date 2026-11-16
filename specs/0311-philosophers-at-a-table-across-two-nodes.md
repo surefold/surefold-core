@@ -66,7 +66,7 @@ and the two-node run matches both.
 
 ## Stack
 
-- [ ] **`spec-0311-philosophers`**: the package above, and the link in `docs/cluster.md`.
+- [x] **`spec-0311-philosophers`**: the package above, and the link in `docs/cluster.md`. (surefold/surefold-core#1108)
       Done when: the suite passes in `./gradlew :surefold-actor-remote:test`, and flipping the ordering fails it.
 
 ## Acceptance
