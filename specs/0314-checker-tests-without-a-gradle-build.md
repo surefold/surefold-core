@@ -66,15 +66,15 @@ keeps the daemon cost and makes tests depend on each other's files. Recommended:
 
 ## Stack
 
-- [ ] **`spec-0314-compile`**: `surefold-junit` for `surefold-app-compiler`'s tests; the `compile` helper; `VersionsTest`
+- [x] **`spec-0314-compile`** (surefold/surefold-core#1115): `surefold-junit` for `surefold-app-compiler`'s tests; the `compile` helper; `VersionsTest`
       to a suite; `TransactSuite`, the smallest group, moved in.
       Done when: the 5 transact tests pass in `:surefold-app-compiler:test` under their names, and are gone from
       `surefold-app-gradle`.
-- [ ] **`spec-0314-hand-rolled`**: the 13 hand-rolled tests moved.
+- [x] **`spec-0314-hand-rolled`** (surefold/surefold-core#1116): the 13 hand-rolled tests moved.
       Done when: the same, for those 13.
-- [ ] **`spec-0314-findings`**: the 19 graph-finding tests moved.
+- [x] **`spec-0314-findings`** (surefold/surefold-core#1117): the 19 graph-finding tests moved.
       Done when: the same, for those 19.
-- [ ] **`spec-0314-plugin`**: the 9 that stay become `WiringPluginSuite`, with no `@TempDir` left in either module.
+- [x] **`spec-0314-plugin`**: the 9 that stay become `WiringPluginSuite`, with no `@TempDir` left in either module.
       Done when: all 44 names pass, two of them in both modules, and `grep -rn @TempDir app/` finds nothing.
 
 ## Acceptance

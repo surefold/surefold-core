@@ -9,6 +9,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:${rootProject.extra["surefoldKotlinVersion"]}")
     // A test compiles snippets in this JVM against what a consumer's graph and steps call (spec 0314).
     testImplementation(project(":surefold-app"))
+    testImplementation(project(":surefold-app-actor"))
     testImplementation(project(":surefold-actor"))
     testImplementation(project(":surefold-stream"))
 }

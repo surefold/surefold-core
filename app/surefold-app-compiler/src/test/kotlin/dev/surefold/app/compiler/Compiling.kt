@@ -23,17 +23,22 @@ internal data class Compiled(val exit: ExitCode, val messages: List<String>) {
 
 /**
  * [source] compiled in this JVM against surefold-app and what it builds on, with the checker loaded from this module's
- * classes and handed [test] and [verbose] as the Gradle plugin hands them (spec 0314). The source is written to a
- * directory made and deleted here, since the compiler reads files.
+ * classes and handed [test] and [verbose] as the Gradle plugin hands them (spec 0314). The source is written as [name]
+ * to a directory made and deleted here, since the compiler reads files and a finding can name one.
  */
-internal fun compile(source: String, test: Boolean = false, verbose: Boolean = false): Compiled {
+internal fun compile(
+    source: String,
+    test: Boolean = false,
+    verbose: Boolean = false,
+    name: String = "Snippet.kt",
+): Compiled {
     val plugin =
         requireNotNull(System.getProperty("surefold.app.compiler.plugin")) {
             "the build must pass -Dsurefold.app.compiler.plugin; see surefold-app-compiler/build.gradle.kts"
         }
     val dir = createTempDirectory("surefold-app-compiler")
     try {
-        val file = dir.resolve("Snippet.kt").apply { writeText(source) }
+        val file = dir.resolve(name).apply { writeText(source) }
         val said = Said()
         val arguments =
             K2JVMCompilerArguments().apply {
