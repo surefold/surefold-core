@@ -1,5 +1,6 @@
 package dev.surefold.actor.remote.philosophers
 
+import dev.surefold.Promise
 import dev.surefold.Scope
 import dev.surefold.actor.ActorRef
 import dev.surefold.actor.Address
@@ -12,12 +13,13 @@ import dev.surefold.actor.spawn
 import dev.surefold.actor.stop
 import dev.surefold.actor.testActors
 import dev.surefold.actor.watch
+import dev.surefold.awaitValue
+import dev.surefold.clock
 import dev.surefold.fail.getOrElse
 import dev.surefold.junit.Suite
 import dev.surefold.junit.shouldBe
 import dev.surefold.scope
 import dev.surefold.timeoutOrNull
-import java.util.concurrent.CountDownLatch
 import kotlin.time.Duration.Companion.seconds
 
 /** One table under `testActors`: every delivery in an order picked from [seed], on the test's own clock. */
@@ -33,27 +35,23 @@ private fun seeded(ordered: Boolean, seed: Long) =
 
 private data class Outcome(val finished: Boolean, val seen: Seen, val forks: List<ForkState>)
 
-/** The forks on a node of their own, `table`, on a platform thread of its own, until [block] is done. */
-private fun <A> withForkNode(block: (port: Int) -> A): A {
+/**
+ * The forks on a node of their own, `forks`, in a fork of this scope, for as long as [block] runs. The node's scope
+ * ends when the fork is cancelled, which closes the node.
+ */
+private fun <A> withForkNode(block: (port: Int) -> A): A = scope {
     val port = freePort()
-    val ready = CountDownLatch(1)
-    val done = CountDownLatch(1)
-    val other =
-        Thread.ofPlatform().start {
-            scope {
-                val node = node("forks", port)
-                repeat(SEATS) { node.expose(spawn("fork-$it", fork(it)), ForkCodec) }
-                ready.countDown()
-                done.await()
-            }
+    val up = Promise<Nothing, Unit>("forks node up")
+    val forks = async {
+        scope {
+            val node = node("forks", port)
+            repeat(SEATS) { node.expose(spawn("fork-$it", fork(it)), ForkCodec) }
+            up.succeed(Unit)
+            Promise<Nothing, Unit>("until cancelled").awaitValue()
         }
-    ready.await()
-    return try {
-        block(port)
-    } finally {
-        done.countDown()
-        other.join()
     }
+    up.awaitValue()
+    block(port).also { forks.cancel() }
 }
 
 /** The philosophers on node `diners`, the forks they reach across TCP on node `forks`. */
@@ -62,8 +60,8 @@ private fun Scope<Nothing>.acrossTwoNodes(forkPort: Int, ordered: Boolean): Pair
     val at = Node("forks", "127.0.0.1", forkPort)
     val forks: List<ActorRef<ForkMsg>> =
         List(SEATS) { node.remote(Address(at.toString(), "/user/fork-$it", 0), ForkCodec) }
-    val start = System.nanoTime()
-    val seen = Seen { (System.nanoTime() - start) / 1_000_000 }
+    val start = clock.get().now()
+    val seen = Seen { java.time.Duration.between(start, clock.get().now()).toMillis() }
     val diners = List(SEATS) { spawn(NAMES[it], philosopher(it, forks, seen, meals = 3, ordered = ordered, seed = 7)) }
     val finished = timeoutOrNull(3.seconds) { diners.forEach { watch(it).await() } } != null
     val states = forks.map { f -> f.ask(2.seconds) { Status(it) }.getOrElse { "did not answer: $it" } }

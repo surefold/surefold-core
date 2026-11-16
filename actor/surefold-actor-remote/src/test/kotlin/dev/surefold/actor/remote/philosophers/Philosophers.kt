@@ -1,5 +1,6 @@
 package dev.surefold.actor.remote.philosophers
 
+import dev.surefold.Shared
 import dev.surefold.actor.ActorRef
 import dev.surefold.actor.Reply
 import dev.surefold.actor.become
@@ -168,27 +169,44 @@ fun philosopher(seat: Int, forks: List<ActorRef<ForkMsg>>, seen: Seen, meals: In
  * only start after the write that ended the meal. A message to an observer could be overtaken; this cannot.
  */
 class Seen(private val now: () -> Long) {
-    private val eating = mutableSetOf<Int>()
-    private val meals = List(SEATS) { mutableListOf<Pair<Long, Long>>() }
-    var mostAtOnce = 0
-        private set
+    private data class Table(
+        val eating: Set<Int> = emptySet(),
+        val meals: List<List<Pair<Long, Long>>> = List(SEATS) { emptyList() },
+        val mostAtOnce: Int = 0,
+        val clashes: Int = 0,
+    )
 
-    var clashes = 0
-        private set
+    private val table = Shared(Table(), "seen")
 
-    @Synchronized
+    val mostAtOnce: Int
+        get() = table.peek().mostAtOnce
+
+    val clashes: Int
+        get() = table.peek().clashes
+
     fun starts(seat: Int) {
-        if (eating.contains((seat + 1) % SEATS) || eating.contains((seat + SEATS - 1) % SEATS)) clashes++
-        eating += seat
-        mostAtOnce = maxOf(mostAtOnce, eating.size)
-        meals[seat] += now() to -1L
+        val at = now()
+        table.update { t ->
+            val clash = t.eating.any { it == (seat + 1) % SEATS || it == (seat + SEATS - 1) % SEATS }
+            val eating = t.eating + seat
+            Table(
+                eating,
+                t.meals.mapIndexed { i, m -> if (i == seat) m + (at to -1L) else m },
+                maxOf(t.mostAtOnce, eating.size),
+                t.clashes + if (clash) 1 else 0,
+            )
+        }
     }
 
-    @Synchronized
     fun ends(seat: Int) {
-        eating -= seat
-        meals[seat][meals[seat].lastIndex] = meals[seat].last().first to now()
+        val at = now()
+        table.update { t ->
+            t.copy(
+                eating = t.eating - seat,
+                meals = t.meals.mapIndexed { i, m -> if (i == seat) m.dropLast(1) + (m.last().first to at) else m },
+            )
+        }
     }
 
-    @Synchronized fun meals(): List<List<Pair<Long, Long>>> = meals.map { it.toList() }
+    fun meals(): List<List<Pair<Long, Long>>> = table.peek().meals
 }

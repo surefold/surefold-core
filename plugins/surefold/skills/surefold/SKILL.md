@@ -1,6 +1,6 @@
 ---
 name: surefold
-description: Use whenever code depends on surefold (dev.surefold:surefold* in a build file, or a dev.surefold import) before writing a scheduler, a background job, a retry or backoff, a circuit breaker, a test wait, a config read, a secret, a resource's close, a database migration, a SurefoldApp's run, logging, metrics or tracing. surefold already ships each of these; this says which call to use instead of writing it again.
+description: Use whenever code depends on surefold (dev.surefold:surefold* in a build file, or a dev.surefold import), and load it before writing any concurrency, actor or test code there: a thread, an executor, a latch, a lock, `synchronized`, an atomic, a future, a blocking queue, a sleep or a poll, a timeout, a race, as well as a scheduler, a background job, a retry or backoff, a circuit breaker, a test wait, a config read, a secret, a resource's close, a database migration, a SurefoldApp's run, logging, metrics or tracing. surefold already ships each of these; this says which call to use instead of the JDK's.
 ---
 
 # surefold
@@ -10,9 +10,44 @@ on the JDK's virtual threads, with Surefold's own `Fail` and `Either` as the err
 Blocking is fine everywhere: every fork is a virtual thread, so there is no
 `suspend`, no dispatcher and no `CompletableFuture` to reach for.
 
-Before writing any of the code below, use the surefold call beside it.
+Before writing any of the code below, use the surefold call beside it. The JDK's
+concurrency primitives are what surefold is built on, not what code on surefold
+uses: a thread, latch, lock or future written by hand belongs to no scope, so its
+failure never reaches the caller and it can outlive the code that started it. If a
+row below is missing what you are about to write, look in `llms.txt` and the core
+guide before reaching for `java.util.concurrent`.
 
-## Before you write it
+## Concurrency: before you reach for the JDK
+
+| About to write | Use instead |
+|---|---|
+| `Thread { }`, `Thread.ofVirtual()`, `Thread.ofPlatform()`, an `ExecutorService` | `scope { async { … } }`; the scope joins it, and its failure reaches you |
+| `executor.invokeAll`, a loop of futures over a list | `parMap`, `parTraverse`, or `traverse`/`mapOrAccumulate` to keep every error |
+| `CountDownLatch`, a `CompletableFuture` used once as a signal | `Promise<E, A>`; a latch is a `Promise<Nothing, Unit>`, awaited with `awaitValue()` |
+| `synchronized`, a `ReentrantLock`, `AtomicReference` or a `ConcurrentHashMap` as shared state | `Shared(value)`, changed with `update`/`modify`, or several together in `transact { }`; `awaitUntil` to wait on it |
+| `BlockingQueue` between producer and consumer | `channel<A>(capacity)` in a scope, and `select { }` to wait on several |
+| `Future.get(timeout)`, a timer thread to give up | `timeout(d) { … }` or `timeoutOrNull(d) { … }` |
+| first answer wins, `CompletableFuture.anyOf` | `raceN(a, b)`, or a `Promise` completed by whichever fork answers first |
+| a `Semaphore` to cap concurrent calls | `policy { guard(Bulkhead(name, maxConcurrent)) }` |
+| `try`/`finally` closing several things | `resourceScope { install(acquire) { it, _ -> release } }` |
+| `System.currentTimeMillis()`, `System.nanoTime()`, `Instant.now()` | `clock.get().now()`, so a `TestClock` can move it |
+| a `ThreadLocal` | `SurefoldLocal`, which crosses into forks |
+| a `CompletableFuture` from or to other code | `future.await()`; `surefoldFuture { … }` to hand one back |
+| a hand-rolled mailbox, a thread per stateful object | an actor: `behaviour` and `spawn` from `surefold-actor` |
+
+## Testing: before you reach for the JDK
+
+| About to write | Use instead |
+|---|---|
+| a JUnit class with `@BeforeAll`/`@AfterAll` holding a resource | an `object … : Suite()` from `surefold-junit`, its resource shared by its tests |
+| `assertEquals`, `assertTrue(a == b)` | `shouldBe`, `shouldBeRight`, `withClue` from `surefold-assert` |
+| a latch or a sleep to wait for something | `eventually(within) { … }`, or `Promise.await(within)` |
+| several runs hoping to hit a race | `explore(runs) { … }` and `replay(order) { … }` from `surefold-replay` |
+| real threads to test actors | `behaviour.test()` or `testActors { }`; `Ordering.seeded(seed)` and `Faults(…)` for other orders and lost messages |
+| a second node on a thread and latches | each node in its own `scope`, started in an `async` fork; a `Promise` says it is up; `cancel()` closes it |
+| reading log output by hand | `capturingLogs { … }` and `capturingMetrics { … }` |
+
+## Applications: before you write it
 
 | About to write | Use instead |
 |---|---|

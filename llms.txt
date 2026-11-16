@@ -17,6 +17,9 @@ Facts worth having before anything else:
   one external library is in surefold-integrations, so depend only on the ones the code uses.
 - Blocking is fine: every fork is a virtual thread. Do not reach for
   `suspend`, a dispatcher or a `CompletableFuture` where a surefold call exists.
+- The JDK's threads, latches, locks, atomics and executors are what surefold is
+  built on, not what code on it uses. "What to reach for" below has each one's
+  replacement; the surefold skill has the full table.
 - A service is a `Module` (a dependency graph) run by `SurefoldApp` and `runApp`.
   Resources are nodes the graph releases in reverse dependency order; a node's
   `close()` is the graph's job, not the class that holds it.
@@ -114,6 +117,14 @@ Micrometer, OpenTelemetry and Arrow) is in [surefold-integrations](https://githu
 | a fake in a test | `.overriding(single<T> { … })` |
 | a smaller test | `.subgraph<Root>()` and `testApp(module) { root -> … }` |
 | a test that waits for something | `eventually(within) { … }`, never `Thread.sleep` |
+| work on another thread | `scope { async { … } }`, never `Thread` or an `ExecutorService` |
+| one signal between forks, a latch | `Promise<Nothing, Unit>`, never `CountDownLatch` or a `CompletableFuture` |
+| state several threads change | `Shared` and `transact { }`, never `synchronized`, a lock or an `AtomicReference` |
+| values from one fork to another | `channel(capacity)` and `select { }`, never a `BlockingQueue` |
+| the time now | `clock.get().now()`, never `System.currentTimeMillis` or `Instant.now()` |
+| a test of actors | `testActors { }` with `Ordering.seeded(seed)` and `Faults(…)`, never real threads and sleeps |
+| a test of a race | `explore(runs) { }` and `replay(order) { }` from `surefold-replay` |
+| a test class | an `object … : Suite()` with `surefold-assert`'s `shouldBe` |
 | a test of something on a timer | `TestStreams` from `surefold-stream-test`, with `TestClock` |
 | a test of a backoff | `clock.locally(fixedClock()) { … }`; not for `timeout`, which fires at once under it |
 
