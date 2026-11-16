@@ -143,6 +143,13 @@ fun Scope<Nothing>.shop(): Either<AskFailure, Int> {
 An address names a node, a path and an incarnation; an incarnation of `0`
 means whichever actor is at that path when the message arrives.
 
+For two nodes doing sustained work together, see the dining philosophers in
+[`PhilosophersSuite`](../actor/surefold-actor-remote/src/test/kotlin/dev/surefold/actor/remote/philosophers/PhilosophersSuite.kt).
+The forks run on one node and the philosophers on another, so every take, grant and put-down crosses TCP. The
+same behaviours also run under `testActors` in 200 seeded orders. With the forks taken in order, every table
+finishes and no neighbours eat together. With the left fork first, the table deadlocks. Run it with `-i` to see
+each table's timeline.
+
 ### Nodes that know each other
 
 A node listens on loopback by default, and speaks plain TCP. To run nodes on a
