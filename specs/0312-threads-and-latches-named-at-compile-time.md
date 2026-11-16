@@ -74,11 +74,11 @@ more than in tests.
 ## Open questions
 
 1. **Warn in test code too?** Tests are where agents reach for latches most, and 0307 replaces them there.
-   Recommended: yes, both.
+   Recommended: yes, both. Taken as recommended when the spec was built (2026-11-16).
 2. **A fifth, `SUREFOLD_TIME_BY_HAND`, for `System.currentTimeMillis`, `nanoTime` and `Instant.now`?** A
    `TestClock` can't move them. But reading the time to log it or measure a benchmark is correct, so it would be
-   noisy. Recommended: not now. Revisit if review keeps finding it.
+   noisy. Recommended: not now. Revisit if review keeps finding it. Taken as recommended when the spec was built (2026-11-16).
 3. **`ConcurrentHashMap`?** It is often fine as a cache, and `Shared` is a transaction. Recommended: no, for the
-   same reason as atomics.
+   same reason as atomics. Taken as recommended when the spec was built (2026-11-16).
 4. **Severity.** Warnings fail the build only where a project sets `allWarningsAsErrors`. Recommended: warnings,
-   and say in `docs/app.md` that `-Werror` makes them blocking.
+   and say in `docs/app.md` that `-Werror` makes them blocking. Taken as recommended when the spec was built (2026-11-16).

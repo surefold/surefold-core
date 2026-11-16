@@ -387,9 +387,11 @@ The same plugin warns where code hand-rolls something Surefold provides:
 | `SUREFOLD_SCHEDULER_BY_HAND` | `Executors.newScheduledThreadPool`, `newSingleThreadScheduledExecutor`, `ScheduledThreadPoolExecutor` or `java.util.Timer` in main code | `Stream.tick(every)` started on a [stream backend](stream.md#backends) |
 | `SUREFOLD_SECRET_AS_STRING` | `string("…")` in a `config` reading, where the path ends in a secret-like name such as `password`, `token` or `apiKey`, in main code | `secret(path)` |
 | `SUREFOLD_SLEEP_IN_TEST` | `Thread.sleep` or `TimeUnit.sleep` in test code | `eventually(within)` from `surefold-test`, or a [test clock](testing.md#time) |
+| `SUREFOLD_THREAD_BY_HAND` | `Thread(..)`, `Thread.ofVirtual`, `ofPlatform`, `startVirtualThread`, Kotlin's `thread { }`, an `Executors.new*` pool other than a scheduled one, `ThreadPoolExecutor` or `ForkJoinPool`, in main and test code | `scope { async { … } }`, or `parMap` over a list ([forking](core.md#forking)) |
+| `SUREFOLD_LATCH_BY_HAND` | `CountDownLatch`, `CyclicBarrier`, `Phaser`, or an empty `CompletableFuture()`, in main and test code | a `Promise`; `Promise<Nothing, Unit>` is a latch ([a value handed over once](core.md#a-value-handed-over-once)) |
 
 Each is a warning, silenced where it is intended by name, for example
-`@Suppress("SUREFOLD_SLEEP_IN_TEST")`.
+`@Suppress("SUREFOLD_SLEEP_IN_TEST")`. A build with `allWarningsAsErrors` makes them blocking.
 
 ### What the compiler plugin refuses inside a step
 

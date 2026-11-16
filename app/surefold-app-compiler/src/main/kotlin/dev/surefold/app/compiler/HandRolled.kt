@@ -1,6 +1,7 @@
 package dev.surefold.app.compiler
 
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -15,29 +16,15 @@ import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
-/** Calls that hand-roll something surefold ships, each named where it is written (spec 0132). */
+/** Calls that hand-roll something surefold ships, each named where it is written (specs 0132 and 0312). */
 internal class HandRolledChecker(private val test: Boolean) : FirFunctionCallChecker(MppCheckerKind.Common) {
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(expression: FirFunctionCall) {
         val symbol = expression.calleeReference.toResolvedCallableSymbol() ?: return
         val called = symbol.callableId ?: return
-        if (test && called in sleeps) {
-            reporter.reportOn(
-                expression.source,
-                SurefoldDiagnostics.SUREFOLD_SLEEP_IN_TEST,
-                said(symbol, called),
-                context,
-            )
-        }
-        if (!test && schedules(symbol, called)) {
-            reporter.reportOn(
-                expression.source,
-                SurefoldDiagnostics.SUREFOLD_SCHEDULER_BY_HAND,
-                said(symbol, called),
-                context,
-            )
-        }
+        val said = said(symbol, called)
+        handRolled(symbol, called, expression).forEach { reporter.reportOn(expression.source, it, said, context) }
         if (!test && called == readingString) {
             val path = (expression.argumentList.arguments.firstOrNull() as? FirLiteralExpression)?.value as? String
             if (path != null && path.substringAfterLast('.').lowercase() in secretNames) {
@@ -45,6 +32,22 @@ internal class HandRolledChecker(private val test: Boolean) : FirFunctionCallChe
             }
         }
     }
+
+    /**
+     * Each warning [called] earns, named by what it called. A thread or latch is named in main and test code alike: a
+     * test's is the one an agent copies next (spec 0312).
+     */
+    private fun handRolled(
+        symbol: FirCallableSymbol<*>,
+        called: CallableId,
+        expression: FirFunctionCall,
+    ): List<KtDiagnosticFactory1<String>> =
+        listOfNotNull(
+            SurefoldDiagnostics.SUREFOLD_SLEEP_IN_TEST.takeIf { test && called in sleeps },
+            SurefoldDiagnostics.SUREFOLD_SCHEDULER_BY_HAND.takeIf { !test && schedules(symbol, called) },
+            SurefoldDiagnostics.SUREFOLD_THREAD_BY_HAND.takeIf { startsThreads(symbol, called) },
+            SurefoldDiagnostics.SUREFOLD_LATCH_BY_HAND.takeIf { latches(symbol, called, expression) },
+        )
 }
 
 private val sleeps =
@@ -95,10 +98,57 @@ private val schedulers =
         ClassId(FqName("java.util"), Name.identifier("Timer")),
     )
 
-/** `Thread.sleep`, or `Timer(..)` for a constructor, whose name is the class's for Java and `<init>` for Kotlin. */
-private fun said(symbol: FirCallableSymbol<*>, called: CallableId): String =
-    if (symbol is FirConstructorSymbol) {
-        "${called.classId?.shortClassName}(..)"
-    } else {
-        "${called.classId?.shortClassName}.${called.callableName}"
+private val thread = ClassId(FqName("java.lang"), Name.identifier("Thread"))
+
+private val threadStarters =
+    setOf("ofVirtual", "ofPlatform", "startVirtualThread").map { CallableId(thread, Name.identifier(it)) }.toSet() +
+        CallableId(FqName("kotlin.concurrent"), Name.identifier("thread")) +
+        setOf(
+                "newFixedThreadPool",
+                "newCachedThreadPool",
+                "newSingleThreadExecutor",
+                "newWorkStealingPool",
+                "newVirtualThreadPerTaskExecutor",
+                "newThreadPerTaskExecutor",
+            )
+            .map { CallableId(executors, Name.identifier(it)) }
+
+private val pools =
+    setOf(
+        thread,
+        ClassId(FqName("java.util.concurrent"), Name.identifier("ThreadPoolExecutor")),
+        ClassId(FqName("java.util.concurrent"), Name.identifier("ForkJoinPool")),
+    )
+
+/** A thread or a pool of them, started or built here; the scheduled pools are [schedules]'s, not this. */
+private fun startsThreads(symbol: FirCallableSymbol<*>, called: CallableId): Boolean =
+    called in threadStarters || (symbol is FirConstructorSymbol && called.classId in pools)
+
+private val latchTypes =
+    setOf("CountDownLatch", "CyclicBarrier", "Phaser")
+        .map { ClassId(FqName("java.util.concurrent"), Name.identifier(it)) }
+        .toSet()
+
+private val completableFuture = ClassId(FqName("java.util.concurrent"), Name.identifier("CompletableFuture"))
+
+/**
+ * A latch, a barrier, or a `CompletableFuture()` made empty to be completed later, which is a latch with a value. A
+ * future from `supplyAsync` or `completedFuture` is a value handed back, and is left alone.
+ */
+private fun latches(symbol: FirCallableSymbol<*>, called: CallableId, expression: FirFunctionCall): Boolean =
+    symbol is FirConstructorSymbol &&
+        (called.classId in latchTypes ||
+            (called.classId == completableFuture && expression.argumentList.arguments.isEmpty()))
+
+/**
+ * `Thread.sleep`, `Timer(..)` for a constructor, whose name is the class's for Java and `<init>` for Kotlin, or `thread
+ * { }` for a top-level function.
+ */
+private fun said(symbol: FirCallableSymbol<*>, called: CallableId): String {
+    val owner = called.classId?.shortClassName
+    return when {
+        symbol is FirConstructorSymbol -> "$owner(..)"
+        owner == null -> "${called.callableName} { }"
+        else -> "$owner.${called.callableName}"
     }
+}
