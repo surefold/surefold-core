@@ -102,8 +102,8 @@ tasks.test {
 tasks.test {
     // A TestKit test starts a Gradle build of its own: on a cold machine that is a distribution to
     // download and a dependency graph to resolve, and the 60s this build gives every other test is
-    // the wrong order of magnitude. It passed here and timed out on the first CI run there was.
-    systemProperty("junit.jupiter.execution.timeout.default", "10m")
+    // the wrong order of magnitude. It passed here and timed out on the first CI run there was. Every test here is a
+    // surefold-junit suite (spec 0314), so Jupiter's own timeout has nothing left to reach.
     systemProperty("surefold.junit.timeout.default", "10m")
     // The plugin compiles for 21, as it runs inside whatever JDK Gradle is on, but a project using surefold-app
     // compiles for 25, surefold-app's floor: its TestKit builds run on 25, which their Kotlin then targets.
