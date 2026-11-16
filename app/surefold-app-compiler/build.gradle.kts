@@ -7,7 +7,10 @@ dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:${rootProject.extra["surefoldKotlinVersion"]}")
     // A test runs outside the compiler, so it has to bring one; `compileOnly` does not reach here.
     testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:${rootProject.extra["surefoldKotlinVersion"]}")
-    testImplementation(project(":surefold-assert"))
+    // A test compiles snippets in this JVM against what a consumer's graph and steps call (spec 0314).
+    testImplementation(project(":surefold-app"))
+    testImplementation(project(":surefold-actor"))
+    testImplementation(project(":surefold-stream"))
 }
 
 // What this was built against, written into the jar so the checker can compare it with the compiler
@@ -44,4 +47,18 @@ tasks.named<JavaCompile>("compileTestJava") {
 
 tasks.withType<Test>().configureEach {
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(testJdk) })
+}
+
+// A snippet's compiler loads the checker as a consumer's does, from its classes and its service files (spec 0314).
+tasks.withType<Test>().configureEach {
+    val plugin = sourceSets.main.get().output
+    inputs.files(plugin).withPropertyName("plugin")
+    jvmArgumentProviders.add(
+        CommandLineArgumentProvider {
+            listOf(
+                "-Dsurefold.app.compiler.plugin=" +
+                    plugin.files.filter { it.exists() }.joinToString(File.pathSeparator) { it.absolutePath },
+            )
+        },
+    )
 }
