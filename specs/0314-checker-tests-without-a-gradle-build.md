@@ -90,8 +90,10 @@ grep -rn "@TempDir\|org.junit.jupiter.api.Test" app/surefold-app-compiler/src/te
 1. **Which two tests stay as the end-to-end proofs of `verbose` and `test`?** Recommended: "the checker runs inside
    the compiler, which is what puts a fault in the editor" for `verbose`, and "a sleep in a test is named, with
    eventually beside it" for `test`. The in-process copies of both also stay, under the same sentences in the
-   compiler module.
+   compiler module. Taken as recommended when the spec was built (2026-11-16).
 2. **Concurrent compiles?** `K2JVMCompiler` in-process is meant to be re-entrant, but the plugin's registrar holds
    state. Recommended: `Suite()`'s default concurrency, falling back to `concurrent = false` if a test shows shared
-   state.
-3. **0313's second entry.** Recommended: mark it superseded by this spec, and leave 0313 otherwise as written.
+   state. Taken as recommended (2026-11-16): the five transact tests run concurrently in-process, with no shared state
+   seen.
+3. **0313's second entry.** Recommended: mark it superseded by this spec, and leave 0313 otherwise as written. Done in
+   surefold/surefold-core#1114.

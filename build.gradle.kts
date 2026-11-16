@@ -209,9 +209,11 @@ subprojects {
     }
 
     // A module's tests are surefold-junit suites (spec 0197), and a failed `expect` draws its values. Not for what
-    // surefold-junit is built on, which a bug would break the runner reporting it, nor for the compiler plugins, whose
-    // tests compile on 21. The Gradle plugin builds for 21 too, but its tests build and run on 25 (spec 0313).
-    if (name !in surefoldJunitRunsOn + compilerPlugins + benchmarkModules) {
+    // surefold-junit is built on, which a bug would break the runner reporting it. The Gradle plugin and
+    // surefold-app-compiler build for 21, but their tests build and run on 25 (specs 0313 and 0314);
+    // surefold-compiler's
+    // tests have not moved yet.
+    if (name !in surefoldJunitRunsOn + "surefold-compiler" + benchmarkModules) {
         apply(plugin = "org.jetbrains.kotlin.plugin.power-assert")
         dependencies { "testImplementation"(project(":surefold-junit")) }
         @OptIn(org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi::class)
