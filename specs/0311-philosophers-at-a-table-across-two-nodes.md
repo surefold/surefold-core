@@ -3,72 +3,83 @@
 ## Problem
 
 The guides show remote actors one tell and one ask at a time (`docs/cluster.md`, "Two nodes"). Nothing in the repo
-shows two nodes doing sustained, concurrent work over the wire, or what a protocol between them looks like when it
-can go wrong. A reader who wants to see `surefold-actor-remote` actually coordinate something has to write it
-themselves.
+shows two nodes doing sustained, concurrent work over the wire. Nothing shows `testActors` hunting a protocol bug
+across seeded orders, then the same behaviours running for real. A reader who wants to see both has to write it.
 
 The dining philosophers is the textbook case. Forks on one node and philosophers on another make every take, grant
-and put-down cross TCP. The naive order deadlocks, ordering the forks fixes it, and both outcomes can be checked.
+and put-down cross TCP. Taking the left fork first deadlocks, ordering the forks fixes it, and both can be checked.
 
 ## Not doing
 
-- **Reliable delivery.** A lost `Granted` would starve a philosopher. That is what "Commands that must arrive"
-  covers, and this example names that limit rather than solving it.
-- **A cluster.** No membership, sharding or downing. Two plain nodes with fixed addresses.
-- **A new module or published artifact.** It is a test, in the module it exercises.
-- **TLS.**
+- **Reliable delivery.** A lost `Granted` starves a philosopher. "Commands that must arrive" covers that.
+- **A cluster, TLS, or a second JVM.** Two plain nodes in one JVM, as `RemoteSuite` runs them.
+- **A new module, or a guide fence.** It is a suite in the module it exercises.
 
 ## Shape
 
-Two files in `actor/surefold-actor-remote/src/test/kotlin/dev/surefold/actor/remote/example/`:
+One package, `actor/surefold-actor-remote/src/test/kotlin/dev/surefold/actor/remote/philosophers/`:
 
-- `DiningPhilosophers.kt`: the protocol (`Take`, `Put`, `Status`, `Granted`) and its codecs, the `fork` and
-  `philosopher` behaviours, a local `watcher`, and a `main` that runs the table node.
-- `DiningPhilosophersSuite.kt`: starts the table as a second JVM, runs the diners node, and asserts.
+- `Philosophers.kt`: the protocol and its `MessageCodec`s, the `fork` and `philosopher` behaviours, and `Seen`.
+- `Render.kt`: the timeline and fork-ring printing below.
+- `PhilosophersSuite.kt`: a `Suite`, `surefold-assert` checks, with ports from the `freePort()` fixture.
+
+The same behaviours run twice: under `testActors(order = Ordering.seeded(seed))` and `settle()` for 200 seeds,
+then on two nodes over TCP. `Seen` is written by each philosopher as it starts eating and before it puts a fork
+back, so no message can overtake it. It stamps time from a function: delivery count under `testActors`, wall
+clock on nodes.
 
 ```kotlin
-@Test fun `with the forks in order everyone eats and no neighbours eat together`() {
-    val result = dine(ordered = true, meals = 3)
-    result.meals shouldBe List(5) { 3 }
-    result.neighbourClashes shouldBe 0
-    result.forkViolations shouldBe 0
+test("with the forks taken in order, every seeded order finishes with no neighbours eating together") {
+    val runs = (1L..200L).map { seeded(ordered = true, seed = it) }
+    runs.count { it.finished } shouldBe 200
+    runs.sumOf { it.seen.clashes } shouldBe 0
 }
+test("with each philosopher taking the left fork first, some seeded order deadlocks") { … }
+test("across two nodes, the ordered table finishes and the naive one deadlocks") { … }
+```
 
-@Test fun `with each philosopher taking the left fork first the table deadlocks`() {
-    val result = dine(ordered = false, meals = 3, giveUpAfter = 2.seconds)
-    result.finished shouldBe false
-    result.waitingFor shouldBe listOf("hegel", "plato", "kant", "hume", "locke") // the cycle, as the forks report it
-}
+Each test prints what it found, so a run by hand reads as a demonstration:
+
+```
+  ━━ ordered · node diners ⇄ node forks over TCP ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  plato  │······················████·········█████···········██████·······│ 3 meals
+  kant   │··················█████·····█████··········█████················│ 3 meals
+  ...
+  ✔ everyone finished · most eating at once: 2 · neighbour clashes: 0
+
+  ━━ left fork first · node diners ⇄ node forks over TCP ━━━━━━━━━━━━━━━━━━━
+  ✘ nobody moved for 3 s: deadlock. The forks, asked across the wire:
+  fork-0  held by plato, hegel waiting
+  ...
 ```
 
 A short paragraph in `docs/cluster.md` under "Two nodes" points at the suite.
 
 ## Why this shape
 
-A test that asserts is an example that cannot rot, and it lives beside the code it uses. **Alternative:** a fence
-in `docs/cluster.md` compiled by `GuideExampleTest`. That keeps it on the page, but the guide test only compiles
-fences, and at roughly 200 lines this would be the longest one by far. Recommended: the suite, plus a link.
+The seeded runs are the proof: 200 orders, deterministic, replayable by seed. The two-node run is the showcase,
+and shows `testActors` and the wire agree. **Alternative:** a guide fence compiled by `GuideExampleTest`. That
+compiles but does not run, and at about 300 lines it would be the longest fence by far. Recommended: the suite.
+
+A prototype passes today: 200/200 ordered seeds finish with 0 clashes, the naive table deadlocks on every seed,
+and the two-node run matches both.
 
 ## Stack
 
-- [ ] **`spec-0311-philosophers`**: the two files above, and the link in `docs/cluster.md`.
-      Done when: both tests pass in `./gradlew :surefold-actor-remote:test`, and the naive test fails if the
-      philosophers are ordered.
+- [ ] **`spec-0311-philosophers`**: the package above, and the link in `docs/cluster.md`.
+      Done when: the suite passes in `./gradlew :surefold-actor-remote:test`, and flipping the ordering fails it.
 
 ## Acceptance
 
 ```bash
-./gradlew :surefold-actor-remote:test --tests '*DiningPhilosophersSuite*'
+./gradlew :surefold-actor-remote:test --tests '*PhilosophersSuite*' -i
 ./gradlew spotlessApply && ./gradlew build
 ```
 
 ## Open questions
 
-1. **Two JVMs or two nodes in one JVM?** Two processes are the more honest demo. Two `node(...)` scopes in one JVM
-   still talk over real TCP, start faster, and need no child-process handling in a test. Recommended: two JVMs,
-   since it is a showcase. Fall back to one JVM if CI timing makes it flaky.
-2. **Keep the deadlock test?** It shows why the ordering matters, but it has to wait for the deadlock (2 s here).
-   Recommended: keep it.
-3. **Logging.** The prototype prints a timestamped line per event, which is the most readable part when run by
-   hand. Recommended: log through `logInfo`, assert only on the result, and say in the KDoc how to see the log.
-4. **Random think and eat times.** Recommended: a fixed seed, so a failure can be replayed.
+1. **Print or log?** Printing gives the readable output above. `logInfo` would route through the logger and
+   need `capturingLogs` to show. Recommended: print, since the output is the point.
+2. **`Faults(drop = …)`?** A fourth test could show a lost `Granted` starving a philosopher. Recommended: leave
+   it out, and link "Commands that must arrive" instead.
+3. **Seed count.** 200 seeds take under a second. Recommended: keep 200.
