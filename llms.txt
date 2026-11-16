@@ -30,7 +30,7 @@ Facts worth having before anything else:
   checks every graph as it compiles and warns where code hand-rolls what surefold
   ships: `SUREFOLD_RUN_NEVER_RETURNS_ON_SHUTDOWN`, `SUREFOLD_SCHEDULER_BY_HAND`,
   `SUREFOLD_SECRET_AS_STRING`, `SUREFOLD_SLEEP_IN_TEST`, `SUREFOLD_THREAD_BY_HAND`,
-  `SUREFOLD_LATCH_BY_HAND`.
+  `SUREFOLD_LATCH_BY_HAND`, `SUREFOLD_LOCK_BY_HAND`, `SUREFOLD_QUEUE_BY_HAND`.
 
 ## Modules
 

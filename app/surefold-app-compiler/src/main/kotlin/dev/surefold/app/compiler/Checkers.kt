@@ -3,6 +3,7 @@ package dev.surefold.app.compiler
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirClassChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirVariableAssignmentChecker
@@ -24,6 +25,8 @@ internal class SurefoldCheckers(session: FirSession, verbose: Boolean, test: Boo
     override val declarationCheckers: DeclarationCheckers =
         object : DeclarationCheckers() {
             override val classCheckers: Set<FirClassChecker> = setOf(ApplicationChecker(verbose), ShutdownChecker())
+
+            override val functionCheckers: Set<FirFunctionChecker> = setOf(SynchronizedChecker())
         }
 
     override val expressionCheckers: ExpressionCheckers =

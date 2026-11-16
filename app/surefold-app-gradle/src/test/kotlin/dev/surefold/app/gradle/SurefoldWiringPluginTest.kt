@@ -504,6 +504,61 @@ class SurefoldWiringPluginTest {
     }
 
     @Test
+    fun `a lock taken by hand is named, in main and test code, with Shared beside it`(@TempDir dir: File) {
+        project(dir, "", SOUND)
+        source(dir, "main", LOCKS)
+        val main = runner(dir, "compileKotlin").build()
+        source(dir, "test", LOCKS.replace("class Counter", "class TestCounter"))
+        val test = runner(dir, "compileTestKotlin").build()
+
+        listOf(main, test).forEach { result ->
+            listOf(
+                    "synchronized { }",
+                    "@Synchronized",
+                    "ReentrantLock(..)",
+                    "ReentrantReadWriteLock(..)",
+                    "StampedLock(..)",
+                )
+                .forEach { result.output shouldContain "$it guards shared state with a lock by hand" }
+            result.output shouldContain "keep the state in a Shared"
+        }
+    }
+
+    @Test
+    fun `a blocking queue is named, in main and test code, with channel beside it`(@TempDir dir: File) {
+        project(dir, "", SOUND)
+        source(dir, "main", QUEUES)
+        val main = runner(dir, "compileKotlin").build()
+        source(dir, "test", QUEUES.replace("fun queues", "fun testQueues"))
+        val test = runner(dir, "compileTestKotlin").build()
+
+        listOf(main, test).forEach { result ->
+            listOf(
+                    "LinkedBlockingQueue(..)",
+                    "ArrayBlockingQueue(..)",
+                    "SynchronousQueue(..)",
+                    "LinkedTransferQueue(..)",
+                )
+                .forEach { result.output shouldContain "$it hands values between threads by hand" }
+            result.output shouldContain "channel(capacity)"
+            withClue("a queue nothing blocks on is not a hand-off between threads") {
+                result.output shouldNotContain "ConcurrentLinkedQueue"
+            }
+        }
+    }
+
+    @Test
+    fun `a lock or queue that means it is silenced by name`(@TempDir dir: File) {
+        project(dir, "", SOUND)
+
+        source(dir, "main", "@file:Suppress(\"SUREFOLD_LOCK_BY_HAND\")\n$LOCKS")
+        runner(dir, "compileKotlin").build().output shouldNotContain "with a lock by hand"
+
+        source(dir, "main", "@file:Suppress(\"SUREFOLD_QUEUE_BY_HAND\")\n$QUEUES")
+        runner(dir, "compileKotlin").build().output shouldNotContain "hands values between threads by hand"
+    }
+
+    @Test
     fun `a run that parks on its root is named, with awaitShutdown beside it`(@TempDir dir: File) {
         project(dir, "", PARKED)
 
@@ -863,6 +918,42 @@ fun latches(): List<Any> = listOf(
     CompletableFuture<Unit>(),
     CompletableFuture.supplyAsync { 1 },
     CompletableFuture.completedFuture(1),
+)
+"""
+
+/** Every way the JDK and Kotlin take a lock by hand. */
+private const val LOCKS =
+    """
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.concurrent.locks.StampedLock
+
+class Counter {
+    private var count = 0
+    private val locks = listOf(ReentrantLock(), ReentrantReadWriteLock(), StampedLock())
+
+    fun add() = synchronized(this) { count++ }
+
+    @Synchronized
+    fun total() = count + locks.size
+}
+"""
+
+/** Every blocking queue the JDK hands values between threads with, and one nothing blocks on. */
+private const val QUEUES =
+    """
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.LinkedTransferQueue
+import java.util.concurrent.SynchronousQueue
+
+fun queues(): List<Any> = listOf(
+    LinkedBlockingQueue<Int>(),
+    ArrayBlockingQueue<Int>(1),
+    SynchronousQueue<Int>(),
+    LinkedTransferQueue<Int>(),
+    ConcurrentLinkedQueue<Int>(),
 )
 """
 

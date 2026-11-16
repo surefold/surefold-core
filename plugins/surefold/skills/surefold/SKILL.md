@@ -91,10 +91,10 @@ catch. Throwing is for what nobody declared, a bug or a broken dependency, and t
 | `runCatching` | catch the exception you expect, by name, or `fail` with a declared failure |
 
 Apply the wiring plugin, `id("dev.surefold.wiring")`. It checks
-every graph as it compiles and warns on six of these by name:
+every graph as it compiles and warns on eight of these by name:
 `SUREFOLD_RUN_NEVER_RETURNS_ON_SHUTDOWN`, `SUREFOLD_SCHEDULER_BY_HAND`,
-`SUREFOLD_SECRET_AS_STRING`, `SUREFOLD_SLEEP_IN_TEST`, `SUREFOLD_THREAD_BY_HAND`
-and `SUREFOLD_LATCH_BY_HAND`. Fix the code rather than
+`SUREFOLD_SECRET_AS_STRING`, `SUREFOLD_SLEEP_IN_TEST`, `SUREFOLD_THREAD_BY_HAND`,
+`SUREFOLD_LATCH_BY_HAND`, `SUREFOLD_LOCK_BY_HAND` and `SUREFOLD_QUEUE_BY_HAND`. Fix the code rather than
 suppressing one, unless the call really means it.
 
 ## Modules
