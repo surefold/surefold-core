@@ -19,7 +19,8 @@ Facts worth having before anything else:
   `suspend`, a dispatcher or a `CompletableFuture` where a surefold call exists.
 - The JDK's threads, latches, locks, atomics and executors are what surefold is
   built on, not what code on it uses. "What to reach for" below has each one's
-  replacement; the surefold skill has the full table.
+  replacement; the surefold skill has the full table. The same holds for
+  `try`/`catch` and `throw`: a promised failure is a `Fail<E>` or an `Either`.
 - A service is a `Module` (a dependency graph) run by `SurefoldApp` and `runApp`.
   Resources are nodes the graph releases in reverse dependency order; a node's
   `close()` is the graph's job, not the class that holds it.
@@ -124,6 +125,9 @@ Micrometer, OpenTelemetry and Arrow) is in [surefold-integrations](https://githu
 | the time now | `clock.get().now()`, never `System.currentTimeMillis` or `Instant.now()` |
 | a test of actors | `testActors { }` with `Ordering.seeded(seed)` and `Faults(…)`, never real threads and sleeps |
 | a test of a race | `explore(runs) { }` and `replay(order) { }` from `surefold-replay` |
+| a failure the caller should handle | `fail(error)` in `attempt { }` or a `Fail<E>` scope, never `throw` |
+| one exception turned into a result | `Either.catchOrThrow<T, _> { }`, never `try`/`catch` |
+| a fallback on failure | `recover({ … }) { error -> … }` or `getOrElse` |
 | a test class | an `object … : Suite()` with `surefold-assert`'s `shouldBe` |
 | a test of something on a timer | `TestStreams` from `surefold-stream-test`, with `TestClock` |
 | a test of a backoff | `clock.locally(fixedClock()) { … }`; not for `timeout`, which fires at once under it |

@@ -1,6 +1,6 @@
 ---
 name: surefold
-description: Use whenever code depends on surefold (dev.surefold:surefold* in a build file, or a dev.surefold import), and load it before writing any concurrency, actor or test code there: a thread, an executor, a latch, a lock, `synchronized`, an atomic, a future, a blocking queue, a sleep or a poll, a timeout, a race, as well as a scheduler, a background job, a retry or backoff, a circuit breaker, a test wait, a config read, a secret, a resource's close, a database migration, a SurefoldApp's run, logging, metrics or tracing. surefold already ships each of these; this says which call to use instead of the JDK's.
+description: Use whenever code depends on surefold (dev.surefold:surefold* in a build file, or a dev.surefold import), and load it before writing any concurrency, actor or test code there: a thread, an executor, a latch, a lock, `synchronized`, an atomic, a future, a blocking queue, a sleep or a poll, a timeout, a race, a `try`/`catch` or a `throw`, as well as a scheduler, a background job, a retry or backoff, a circuit breaker, a test wait, a config read, a secret, a resource's close, a database migration, a SurefoldApp's run, logging, metrics or tracing. surefold already ships each of these; this says which call to use instead of the JDK's.
 ---
 
 # surefold
@@ -34,6 +34,25 @@ guide before reaching for `java.util.concurrent`.
 | a `ThreadLocal` | `SurefoldLocal`, which crosses into forks |
 | a `CompletableFuture` from or to other code | `future.await()`; `surefoldFuture { … }` to hand one back |
 | a hand-rolled mailbox, a thread per stateful object | an actor: `behaviour` and `spawn` from `surefold-actor` |
+
+## Errors: before you reach for `try`/`catch`
+
+A failure the caller was promised is a value: a `Fail<E>` or an `Either<E, A>`, never an exception it has to know to
+catch. Throwing is for what nobody declared, a bug or a broken dependency, and that goes up on its own.
+
+| About to write | Use instead |
+|---|---|
+| `throw SomeException(…)` for an outcome the caller should handle | `fail(error)` inside `attempt { … }` or a `Fail<E>` scope, with `E` a sealed type |
+| `if (!ok) throw …`, `value ?: throw …` | `ensure(ok) { error }`, `ensureNotNull(value) { error }` |
+| `try { … } catch (e: SomeException) { … }` to turn one exception into a result | `Either.catchOrThrow<SomeException, _> { … }` (snapshots after 0.18.0; on 0.18.0, `Either.catch` and check the type); anything else goes on up unchanged |
+| `try { … } catch (e: Exception)` or `Throwable` | `Either.catch { … }` at a boundary only; it rethrows fatals, interrupts and a `fail` on its way out |
+| `catch (e: InterruptedException) { }` | nothing: let it go up, so cancellation works |
+| a nullable or a hand-written `Result` class as the return | `Either<E, A>`, or a function on `Fail<E>` |
+| `catch` to fall back to a default | `recover({ … }) { error -> fallback }`, or `getOrElse` on the `Either` |
+| `try`/`catch` around each item to collect every error | `mapOrAccumulate` or `zipOrAccumulate` |
+| an `Either` unwrapped with `when` to rethrow | `.bind()` inside a `Fail<E>` scope |
+| `try`/`finally` to close something | `resourceScope { install(acquire) { it, _ -> release } }` |
+| `catch` and retry in a loop | `policy("…") { retry(Schedule.exponential(…)) }` |
 
 ## Testing: before you reach for the JDK
 

@@ -95,7 +95,9 @@ every place that has to name it.
 Code here uses what surefold ships, in tests and examples too: `scope`/`async` rather than a `Thread`, `Promise`
 rather than a `CountDownLatch`, `Shared` rather than `synchronized` or a lock, `channel` rather than a
 `BlockingQueue`, `clock` rather than `System.nanoTime`, `testActors` and `explore` rather than real threads and
-retries, `Suite` and `surefold-assert` rather than plain JUnit. The full table is in the plugin's
+retries, `Suite` and `surefold-assert` rather than plain JUnit. Errors the same way: `fail` in a
+`Fail<E>` scope rather than `throw`, `Either.catchOrThrow` rather than `try`/`catch`, `recover` rather than a
+catch-and-default. The full table is in the plugin's
 [`SKILL.md`](plugins/surefold/skills/surefold/SKILL.md); specs 0307 and 0309 say which files are exempt and why.
 An older test written the other way is not a pattern to copy.
 
