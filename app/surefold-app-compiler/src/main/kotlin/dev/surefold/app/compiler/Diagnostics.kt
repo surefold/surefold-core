@@ -58,6 +58,14 @@ object SurefoldDiagnostics : KtDiagnosticsContainer() {
     val SUREFOLD_SCHEDULER_BY_HAND: KtDiagnosticFactory1<String> =
         factory("SUREFOLD_SCHEDULER_BY_HAND", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
 
+    /** A thread or pool started by hand, which belongs to no scope, where `scope { async { } }` does (spec 0312). */
+    val SUREFOLD_THREAD_BY_HAND: KtDiagnosticFactory1<String> =
+        factory("SUREFOLD_THREAD_BY_HAND", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
+
+    /** A latch, barrier or bare future made to hand over one signal, where a `Promise` does (spec 0312). */
+    val SUREFOLD_LATCH_BY_HAND: KtDiagnosticFactory1<String> =
+        factory("SUREFOLD_LATCH_BY_HAND", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
+
     /** A secret read as a `String`, which prints itself, where `secret(path)` reads one that does not. Main only. */
     val SUREFOLD_SECRET_AS_STRING: KtDiagnosticFactory1<String> =
         factory("SUREFOLD_SECRET_AS_STRING", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
@@ -131,6 +139,18 @@ private object Renderers : BaseDiagnosticRendererFactory() {
                 SurefoldDiagnostics.SUREFOLD_SCHEDULER_BY_HAND,
                 "surefold: {0} schedules work by hand; run it as " +
                     "Stream.tick(every) started on the graph''s StreamBackend",
+                CommonRenderers.STRING,
+            )
+            map.put(
+                SurefoldDiagnostics.SUREFOLD_THREAD_BY_HAND,
+                "surefold: {0} starts threads by hand, which belong to no scope, so a failure never reaches " +
+                    "the caller; fork with scope.async, or parMap over a list",
+                CommonRenderers.STRING,
+            )
+            map.put(
+                SurefoldDiagnostics.SUREFOLD_LATCH_BY_HAND,
+                "surefold: {0} hands a signal between threads by hand; use a Promise, " +
+                    "Promise<Nothing, Unit> for a latch, completed with succeed and waited on with awaitValue",
                 CommonRenderers.STRING,
             )
             map.put(

@@ -424,8 +424,83 @@ class SurefoldWiringPluginTest {
         result.output shouldContain "Timer(..) schedules work by hand"
         result.output shouldContain "Stream.tick(every) started on the graph's StreamBackend"
         withClue("an executor that schedules nothing is not a scheduler") {
-            result.output shouldNotContain "newVirtualThreadPerTaskExecutor"
+            result.output shouldNotContain "newVirtualThreadPerTaskExecutor schedules work by hand"
         }
+    }
+
+    @Test
+    fun `a thread or pool started by hand is named, in main and test code, with scope async beside it`(
+        @TempDir dir: File,
+    ) {
+        project(dir, "", SOUND)
+        source(dir, "main", THREADS)
+        val main = runner(dir, "compileKotlin").build()
+        source(dir, "test", THREADS.replace("fun threads", "fun testThreads"))
+        val test = runner(dir, "compileTestKotlin").build()
+
+        listOf(main, test).forEach { result ->
+            listOf(
+                    "Thread(..)",
+                    "Thread.ofVirtual",
+                    "Thread.ofPlatform",
+                    "Thread.startVirtualThread",
+                    "thread { }",
+                    "Executors.newFixedThreadPool",
+                    "Executors.newCachedThreadPool",
+                    "Executors.newSingleThreadExecutor",
+                    "Executors.newWorkStealingPool",
+                    "Executors.newVirtualThreadPerTaskExecutor",
+                    "Executors.newThreadPerTaskExecutor",
+                    "ThreadPoolExecutor(..)",
+                    "ForkJoinPool(..)",
+                )
+                .forEach { result.output shouldContain "$it starts threads by hand" }
+            result.output shouldContain "fork with scope.async"
+        }
+    }
+
+    @Test
+    fun `a scheduled pool is the scheduler warning's, not the thread warning's`(@TempDir dir: File) {
+        project(dir, "", SOUND)
+        source(dir, "main", SCHEDULERS)
+
+        val result = runner(dir, "compileKotlin").build()
+
+        result.output shouldNotContain "newScheduledThreadPool starts threads by hand"
+        result.output shouldNotContain "ScheduledThreadPoolExecutor(..) starts threads by hand"
+    }
+
+    @Test
+    fun `a latch, a barrier or an empty future is named, in main and test code, with Promise beside it`(
+        @TempDir dir: File,
+    ) {
+        project(dir, "", SOUND)
+        source(dir, "main", LATCHES)
+        val main = runner(dir, "compileKotlin").build()
+        source(dir, "test", LATCHES.replace("fun latches", "fun testLatches"))
+        val test = runner(dir, "compileTestKotlin").build()
+
+        listOf(main, test).forEach { result ->
+            listOf("CountDownLatch(..)", "CyclicBarrier(..)", "Phaser(..)", "CompletableFuture(..)").forEach {
+                result.output shouldContain "$it hands a signal between threads by hand"
+            }
+            result.output shouldContain "Promise<Nothing, Unit> for a latch"
+            withClue("a future handed back with a value is not a latch") {
+                result.output shouldNotContain "supplyAsync"
+                result.output shouldNotContain "completedFuture"
+            }
+        }
+    }
+
+    @Test
+    fun `a thread or latch that means it is silenced by name`(@TempDir dir: File) {
+        project(dir, "", SOUND)
+
+        source(dir, "main", "@file:Suppress(\"SUREFOLD_THREAD_BY_HAND\")\n$THREADS")
+        runner(dir, "compileKotlin").build().output shouldNotContain "starts threads by hand"
+
+        source(dir, "main", "@file:Suppress(\"SUREFOLD_LATCH_BY_HAND\")\n$LATCHES")
+        runner(dir, "compileKotlin").build().output shouldNotContain "hands a signal between threads by hand"
     }
 
     @Test
@@ -743,6 +818,51 @@ fun schedulers() = listOf(
     ScheduledThreadPoolExecutor(1),
     Timer(),
     Executors.newVirtualThreadPerTaskExecutor(),
+)
+"""
+
+/** Every way the JDK starts a thread or builds a pool of them, as code written on surefold reaches for one. */
+private const val THREADS =
+    """
+import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
+
+fun threads(): List<Any> = listOf(
+    Thread {},
+    Thread.ofVirtual(),
+    Thread.ofPlatform(),
+    Thread.startVirtualThread {},
+    thread(start = false) {},
+    Executors.newFixedThreadPool(1),
+    Executors.newCachedThreadPool(),
+    Executors.newSingleThreadExecutor(),
+    Executors.newWorkStealingPool(),
+    Executors.newVirtualThreadPerTaskExecutor(),
+    Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory()),
+    ThreadPoolExecutor(1, 1, 1, TimeUnit.SECONDS, LinkedBlockingQueue()),
+    ForkJoinPool(1),
+)
+"""
+
+/** Every way the JDK hands one signal between threads, and two futures that carry a value and are not latches. */
+private const val LATCHES =
+    """
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Phaser
+
+fun latches(): List<Any> = listOf(
+    CountDownLatch(1),
+    CyclicBarrier(2),
+    Phaser(),
+    CompletableFuture<Unit>(),
+    CompletableFuture.supplyAsync { 1 },
+    CompletableFuture.completedFuture(1),
 )
 """
 
