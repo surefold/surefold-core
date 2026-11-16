@@ -66,14 +66,14 @@ tests in place. Recommended: move it.
       `ReaderKnowsFactoriesTest` become suites.
       Done when: `:surefold-app-gradle:test` runs the same test names, those two classes through the surefold engine.
 - [ ] **`spec-0313-wiring`**: `SurefoldWiringPluginTest` becomes the four suites, with no `@TempDir` left in the module.
-      Done when: the same 41 test names pass through the surefold engine, and `grep -r TempDir app/surefold-app-gradle`
+      Done when: the same 44 test names pass through the surefold engine, and `grep -r @TempDir app/surefold-app-gradle`
       finds nothing.
 
 ## Acceptance
 
 ```bash
 ./gradlew :surefold-app-gradle:test
-grep -rn "TempDir\|org.junit.jupiter" app/surefold-app-gradle/src/test || echo none
+grep -rn "@TempDir\|org.junit.jupiter" app/surefold-app-gradle/src/test || echo none
 ./gradlew spotlessApply && ./gradlew build
 ```
 
@@ -82,8 +82,8 @@ grep -rn "TempDir\|org.junit.jupiter" app/surefold-app-gradle/src/test || echo n
 1. **Concurrent or one at a time?** Each test starts a TestKit build, which is a Gradle daemon of its own. Jupiter
    runs them one at a time today. A suite's default would run up to one per core, which is faster but uses several
    daemons' worth of memory on a 4-core runner. Recommended: `Suite(concurrent = false)`, then measure concurrency
-   separately.
+   separately. Taken as recommended when the spec was built (2026-11-16).
 2. **The 10-minute timeout.** The build file sets `surefold.junit.timeout.default` to 10m already, beside
-   Jupiter's. Recommended: keep it, and drop the Jupiter property once nothing in the module uses Jupiter.
+   Jupiter's. Recommended: keep it, and drop the Jupiter property once nothing in the module uses Jupiter. Taken as recommended when the spec was built (2026-11-16).
 3. **0197's record.** Recommended: leave 0197 as written, and name this spec in the root build's comment where the
-   exemption was.
+   exemption was. Taken as recommended when the spec was built (2026-11-16).

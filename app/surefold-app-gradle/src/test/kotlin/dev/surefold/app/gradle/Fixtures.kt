@@ -1,0 +1,584 @@
+package dev.surefold.app.gradle
+
+import java.io.File
+import java.nio.file.Path
+import org.gradle.testkit.runner.GradleRunner
+
+/*
+ * What every build these tests run is made of: a project applying the wiring plugin to this repository's own
+ * surefold-app, the runner that builds it, and the graphs and sources each test compiles (spec 0313).
+ */
+
+/** A project in [dir] applying the wiring plugin, with [wiring] in its build file and [graph] as its main source. */
+internal fun project(dir: Path, wiring: String, graph: String) {
+    val underTest =
+        requireNotNull(System.getProperty("surefold.app.underTest")) {
+            "the build must pass -Dsurefold.app.underTest; see surefold-app-gradle/build.gradle.kts"
+        }
+    val checker =
+        requireNotNull(System.getProperty("surefold.checker.repo")) {
+            "the build must pass -Dsurefold.checker.repo; see surefold-app-gradle/build.gradle.kts"
+        }
+    val version = System.getProperty("surefold.checker.version")
+    val jars = underTest.split(File.pathSeparator).joinToString(", ") { "\"$it\"" }
+
+    dir.resolve("settings.gradle.kts")
+        .toFile()
+        .writeText(
+            """
+        pluginManagement {
+            repositories {
+                maven { url = uri("$checker") }
+                gradlePluginPortal()
+            }
+        }
+
+        rootProject.name = "under-test"
+        """
+                .trimIndent(),
+        )
+    dir.resolve("build.gradle.kts")
+        .toFile()
+        .writeText(
+            """
+        plugins {
+            kotlin("jvm") version "2.4.10"
+            id("dev.surefold.wiring") version "$version"
+        }
+
+        // Where the compiler plugin comes from; the Kotlin plugin resolves it by coordinates.
+        repositories {
+            maven { url = uri("$checker") }
+            mavenCentral()
+        }
+
+        dependencies { implementation(files($jars)) }
+
+        $wiring
+        """
+                .trimIndent(),
+        )
+    source(dir, "main", graph, "Under.kt")
+}
+
+/** A build of [dir] that is expected to fail. */
+internal fun run(dir: Path, vararg args: String) = runner(dir, *args).buildAndFail()
+
+internal fun runner(dir: Path, vararg args: String): GradleRunner =
+    GradleRunner.create().withProjectDir(dir.toFile()).withArguments(*args, "--stacktrace")
+
+/** [text] as a Kotlin source in source set [set], replacing whatever an earlier call wrote there under [name]. */
+internal fun source(dir: Path, set: String, text: String, name: String = "Waits.kt") {
+    val file = dir.resolve("src/$set/kotlin/$name").toFile()
+    file.parentFile.mkdirs()
+    file.writeText(text)
+}
+
+internal const val IMPORTS =
+    """
+import dev.surefold.app.AppScope
+import dev.surefold.app.SurefoldApp
+import dev.surefold.app.Module
+import dev.surefold.app.single
+import kotlin.reflect.typeOf
+
+class Pump
+class DataSource
+"""
+
+internal const val FAULTY =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module = single { _: DataSource -> Pump() }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+internal const val SOUND =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module = single<Pump> { Pump() }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** A chain, a name it is reached through, and a choice whose branches are unioned. */
+internal const val COMPOSED =
+    """$IMPORTS
+class Valve
+
+private val chosen: Module =
+    if (System.getenv("X") == null) single<DataSource> { DataSource() } else single<DataSource> { DataSource() }
+
+private val named: Module = single { _: DataSource -> Pump() } + single { _: DataSource -> Valve() }
+
+object Under : SurefoldApp<Pump>() {
+    override val module: Module = named + chosen
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/**
+ * surefold-app-actor's factories, compiled against the real module. The reader holds its own copy of what each takes,
+ * and this is the only build that would notice that copy going stale. surefold-integrations does the same for the
+ * factories its modules ship.
+ */
+internal const val LIBRARY_ACTORS =
+    """
+import dev.surefold.actor.ActorRef
+import dev.surefold.actor.behaviour
+import dev.surefold.actor.stay
+import dev.surefold.app.AppScope
+import dev.surefold.app.SurefoldApp
+import dev.surefold.app.Module
+import dev.surefold.app.actor.actor
+import dev.surefold.app.actor.actors
+import dev.surefold.app.single
+
+class Ping
+class Ledger
+
+object Under : SurefoldApp<ActorRef<Ping>>() {
+    override val module: Module =
+        actors() +
+            single<Ledger> { Ledger() } +
+            actor<Ping, Ledger>("ping") { _ -> behaviour<Ping, Unit>(Unit) { _, _, _ -> stay() } }
+    override fun AppScope.run(root: ActorRef<Ping>) = Unit
+}
+"""
+
+/** Unreadable and short of a key: what only a task that runs the graph can catch. */
+internal const val UNREADABLE_AND_FAULTY =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module = listOf(single { _: DataSource -> Pump() }).reduce { a, b -> a + b }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** A module out of a collection: legal, sound, and nothing a reader can follow. */
+internal const val UNREADABLE =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module =
+        listOf(single<DataSource> { DataSource() }, single { _: DataSource -> Pump() }).reduce { a, b -> a + b }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+internal const val WARNED =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module = single<Pump> { Pump() } + single<Pump> { Pump() }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** A node nothing takes, and a node only that one takes: one edit, and so one thing to say. */
+internal const val FORGOTTEN =
+    """$IMPORTS
+class Ledger
+class Audit(val ledger: Ledger)
+
+object Under : SurefoldApp<Pump>() {
+    override val module: Module =
+        single<Pump> { Pump() } + single<Ledger> { Ledger() } + single { l: Ledger -> Audit(l) }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** A graph that builds no root: sound to read, and unanswerable about what reaches what. */
+internal const val ROOTLESS =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module = single<DataSource> { DataSource() }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** Two recipes for one key, on two lines, so the report has a line to name that is not its own. */
+internal const val TWICE =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module =
+        single<Pump> { Pump() } +
+            single<Pump> { Pump() }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** The same collision, said out loud. */
+internal const val OVERRIDDEN =
+    """
+import dev.surefold.app.AppScope
+import dev.surefold.app.SurefoldApp
+import dev.surefold.app.Module
+import dev.surefold.app.overriding
+import dev.surefold.app.single
+
+class Pump
+
+object Under : SurefoldApp<Pump>() {
+    override val module: Module =
+        single<Pump> { Pump() }.overriding(single<Pump> { Pump() })
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** Each of two recipes needing the other: legal to write, impossible to assemble. */
+internal const val RING =
+    """$IMPORTS
+object Under : SurefoldApp<Pump>() {
+    override val module: Module =
+        single { _: DataSource -> Pump() } + single { _: Pump -> DataSource() }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** Both sleeps the JDK has, the way a test reaches for them. */
+internal const val SLEEPS =
+    """
+import java.util.concurrent.TimeUnit
+
+fun waits() {
+    Thread.sleep(200)
+    TimeUnit.MILLISECONDS.sleep(200)
+}
+"""
+
+/** Every way the JDK builds a scheduler, and one executor that is not one. */
+internal const val SCHEDULERS =
+    """
+import java.util.Timer
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledThreadPoolExecutor
+
+fun schedulers() = listOf(
+    Executors.newScheduledThreadPool(1),
+    Executors.newSingleThreadScheduledExecutor(),
+    ScheduledThreadPoolExecutor(1),
+    Timer(),
+    Executors.newVirtualThreadPerTaskExecutor(),
+)
+"""
+
+/** Every way the JDK starts a thread or builds a pool of them, as code written on surefold reaches for one. */
+internal const val THREADS =
+    """
+import java.util.concurrent.Executors
+import java.util.concurrent.ForkJoinPool
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
+
+fun threads(): List<Any> = listOf(
+    Thread {},
+    Thread.ofVirtual(),
+    Thread.ofPlatform(),
+    Thread.startVirtualThread {},
+    thread(start = false) {},
+    Executors.newFixedThreadPool(1),
+    Executors.newCachedThreadPool(),
+    Executors.newSingleThreadExecutor(),
+    Executors.newWorkStealingPool(),
+    Executors.newVirtualThreadPerTaskExecutor(),
+    Executors.newThreadPerTaskExecutor(Thread.ofVirtual().factory()),
+    ThreadPoolExecutor(1, 1, 1, TimeUnit.SECONDS, LinkedBlockingQueue()),
+    ForkJoinPool(1),
+)
+"""
+
+/** Every way the JDK hands one signal between threads, and two futures that carry a value and are not latches. */
+internal const val LATCHES =
+    """
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.Phaser
+
+fun latches(): List<Any> = listOf(
+    CountDownLatch(1),
+    CyclicBarrier(2),
+    Phaser(),
+    CompletableFuture<Unit>(),
+    CompletableFuture.supplyAsync { 1 },
+    CompletableFuture.completedFuture(1),
+)
+"""
+
+/** Every way the JDK and Kotlin take a lock by hand. */
+internal const val LOCKS =
+    """
+import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import java.util.concurrent.locks.StampedLock
+
+class Counter {
+    private var count = 0
+    private val locks = listOf(ReentrantLock(), ReentrantReadWriteLock(), StampedLock())
+
+    fun add() = synchronized(this) { count++ }
+
+    @Synchronized
+    fun total() = count + locks.size
+}
+"""
+
+/** Every blocking queue the JDK hands values between threads with, and one nothing blocks on. */
+internal const val QUEUES =
+    """
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.LinkedTransferQueue
+import java.util.concurrent.SynchronousQueue
+
+fun queues(): List<Any> = listOf(
+    LinkedBlockingQueue<Int>(),
+    ArrayBlockingQueue<Int>(1),
+    SynchronousQueue<Int>(),
+    LinkedTransferQueue<Int>(),
+    ConcurrentLinkedQueue<Int>(),
+)
+"""
+
+/** A root whose own wait ends only when it is stopped, which is the release, after run returns. */
+internal const val PARKED =
+    """
+import dev.surefold.app.AppScope
+import dev.surefold.app.SurefoldApp
+import dev.surefold.app.Module
+import dev.surefold.app.single
+
+class Server { fun block() = Unit }
+
+object Under : SurefoldApp<Server>() {
+    override val module: Module = single<Server> { Server() }
+    override fun AppScope.run(root: Server) { root.block() }
+}
+"""
+
+/** The same root, with run parked where surefold can end it. */
+internal const val AWAITED =
+    """
+import dev.surefold.app.AppScope
+import dev.surefold.app.SurefoldApp
+import dev.surefold.app.Module
+import dev.surefold.app.single
+
+class Server { fun block() = Unit }
+
+object Under : SurefoldApp<Server>() {
+    override val module: Module = single<Server> { Server() }
+    override fun AppScope.run(root: Server) { awaitShutdown() }
+}
+"""
+
+/** A setting that picks the module providing the root, made inside the graph (spec 0136). */
+internal const val CHOSEN =
+    """
+import dev.surefold.app.AppScope
+import dev.surefold.app.SurefoldApp
+import dev.surefold.app.Module
+import dev.surefold.app.choice
+import dev.surefold.app.single
+
+class Pump
+enum class Kind { Small, Large }
+
+object Under : SurefoldApp<Pump>() {
+    override val module: Module =
+        single<Kind> { Kind.Small } + choice<Kind, Pump> { _ -> single<Pump> { Pump() } }
+    override fun AppScope.run(root: Pump) = Unit
+}
+"""
+
+/** Every kind of call the step checker refuses, inside transact, a firstOf branch and a Transaction helper. */
+internal const val EFFECTS_IN_A_STEP =
+    """
+import dev.surefold.Deferred
+import dev.surefold.Shared
+import dev.surefold.Transaction
+import dev.surefold.parMap
+import dev.surefold.parZip
+import dev.surefold.raceN
+import dev.surefold.scope
+import dev.surefold.transact
+import java.io.FileInputStream
+import java.net.Socket
+import java.sql.DriverManager
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+import java.io.File
+import java.nio.file.Path
+import kotlin.io.encoding.Base64
+import kotlin.io.path.writeText
+
+val seats = Shared(10)
+val guard = ReentrantLock()
+
+fun Transaction.take() {
+    Thread.sleep(1)
+    seats.update { it - 1 }
+}
+
+fun effects(future: Future<Int>, deferred: Deferred<Int>) = transact {
+    FileInputStream("seats.txt")
+    Socket("box-office", 80)
+    DriverManager.getConnection("jdbc:h2:mem:")
+    Thread.sleep(1)
+    TimeUnit.MILLISECONDS.sleep(1)
+    future.get()
+    deferred.await()
+    guard.lock()
+    synchronized(guard) { seats.get() }
+    parMap(listOf(1)) { it }
+    parZip({ 1 }, { 2 }) { a, b -> a + b }
+    raceN({ 1 }, { 2 })
+    scope { async { 1 }.await() }
+    firstOf({ Thread.sleep(1) }, { take() })
+    File("seats.txt").readText()
+    Path.of("seats.txt").writeText("10")
+    readln()
+    Base64.encode(byteArrayOf(1))
+}
+"""
+
+/** The same calls, in a function that is not a step. */
+internal const val EFFECTS_OUTSIDE_A_STEP =
+    """
+import dev.surefold.Deferred
+import dev.surefold.Shared
+import dev.surefold.parMap
+import dev.surefold.parZip
+import dev.surefold.raceN
+import dev.surefold.scope
+import dev.surefold.transact
+import java.io.FileInputStream
+import java.net.Socket
+import java.sql.DriverManager
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+
+val seats = Shared(10)
+val guard = ReentrantLock()
+
+fun effects(future: Future<Int>, deferred: Deferred<Int>) {
+    FileInputStream("seats.txt")
+    Socket("box-office", 80)
+    DriverManager.getConnection("jdbc:h2:mem:")
+    Thread.sleep(1)
+    TimeUnit.MILLISECONDS.sleep(1)
+    future.get()
+    deferred.await()
+    guard.lock()
+    synchronized(guard) { seats.peek() }
+    parMap(listOf(1)) { it }
+    parZip({ 1 }, { 2 }) { a, b -> a + b }
+    raceN({ 1 }, { 2 })
+    scope { async { 1 }.await() }
+    println(seats.peek())
+    transact { seats.update { it - 1 } }
+}
+"""
+
+/** Writes to state from outside a step, a peek, and the writes a step owns or cannot judge. */
+internal const val CAPTURES =
+    """
+import dev.surefold.Shared
+import dev.surefold.Transaction
+import dev.surefold.transact
+
+var total = 0
+
+class Order { var seen = 0 }
+
+class BoxOffice {
+    private val free = Shared(10)
+    private var sold = 0
+
+    fun hold(order: Order): Int {
+        var count = 0
+        transact {
+            count += 1
+            sold++
+            total = free.peek()
+            var mine = free.get()
+            mine -= 1
+            free.set(mine)
+            order.seen = mine
+        }
+        return count
+    }
+}
+
+fun Transaction.counted(free: Shared<Int>): Int {
+    var tally = 0
+    tally += free.get()
+    return tally
+}
+"""
+
+/** Surefold's own effects, and printing, each the kind a step wants to happen once it has committed. */
+internal const val SUREFOLD_EFFECTS =
+    """
+import dev.surefold.Counter
+import dev.surefold.Gauge
+import dev.surefold.Histogram
+import dev.surefold.LogLine
+import dev.surefold.Logger
+import dev.surefold.Shared
+import dev.surefold.actor.ActorRef
+import dev.surefold.logInfo
+import dev.surefold.stream.Hub
+import dev.surefold.transact
+
+val free = Shared(10)
+
+fun hold(
+    log: Logger,
+    line: LogLine,
+    sold: Counter,
+    left: Gauge,
+    sizes: Histogram,
+    orders: ActorRef<String>,
+    events: Hub<String>,
+) =
+    transact {
+        free.update { it - 1 }
+        logInfo("held one")
+        log.log(line)
+        sold.increment(1.0)
+        left.set(free.get().toDouble())
+        sizes.record(1.0)
+        orders.tell("held")
+        events.publish("held")
+        println("held")
+        print("held")
+    }
+"""
+
+/** Every kind of effect, each inside an afterCommit block in a step. */
+internal const val AFTER_COMMIT =
+    """
+import dev.surefold.Counter
+import dev.surefold.Shared
+import dev.surefold.actor.ActorRef
+import dev.surefold.logInfo
+import dev.surefold.transact
+
+val free = Shared(10)
+
+fun hold(sold: Counter, orders: ActorRef<String>) = transact {
+    free.update { it - 1 }
+    afterCommit {
+        logInfo("held one")
+        sold.increment(1.0)
+        orders.tell("held")
+        Thread.sleep(1)
+    }
+}
+"""
