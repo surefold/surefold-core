@@ -61,11 +61,11 @@ tests in place. Recommended: move it.
 
 ## Stack
 
-- [ ] **`spec-0313-fixtures`**: `surefold-junit` on the module's test classpath; `project`, `runner`, `source` and the
+- [x] **`spec-0313-fixtures`** (surefold/surefold-core#1113): `surefold-junit` on the module's test classpath; `project`, `runner`, `source` and the
       fixture strings move to `Fixtures.kt`, taking a `Path`; `SurefoldForksPluginTest` and
       `ReaderKnowsFactoriesTest` become suites.
       Done when: `:surefold-app-gradle:test` runs the same test names, those two classes through the surefold engine.
-- [ ] **`spec-0313-wiring`**: `SurefoldWiringPluginTest` becomes the four suites, with no `@TempDir` left in the module.
+- [ ] ~~**`spec-0313-wiring`**~~ superseded by spec 0314, which moves the checker's tests out of Gradle first: `SurefoldWiringPluginTest` becomes the four suites, with no `@TempDir` left in the module.
       Done when: the same 44 test names pass through the surefold engine, and `grep -r @TempDir app/surefold-app-gradle`
       finds nothing.
 
