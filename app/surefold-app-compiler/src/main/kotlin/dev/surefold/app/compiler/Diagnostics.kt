@@ -66,6 +66,16 @@ object SurefoldDiagnostics : KtDiagnosticsContainer() {
     val SUREFOLD_LATCH_BY_HAND: KtDiagnosticFactory1<String> =
         factory("SUREFOLD_LATCH_BY_HAND", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
 
+    /**
+     * A lock taken by hand, `synchronized` or `@Synchronized` included, where a `Shared` holds the state (spec 0312).
+     */
+    val SUREFOLD_LOCK_BY_HAND: KtDiagnosticFactory1<String> =
+        factory("SUREFOLD_LOCK_BY_HAND", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
+
+    /** A blocking queue between threads, where a scope's `channel` is bounded and closes with it (spec 0312). */
+    val SUREFOLD_QUEUE_BY_HAND: KtDiagnosticFactory1<String> =
+        factory("SUREFOLD_QUEUE_BY_HAND", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
+
     /** A secret read as a `String`, which prints itself, where `secret(path)` reads one that does not. Main only. */
     val SUREFOLD_SECRET_AS_STRING: KtDiagnosticFactory1<String> =
         factory("SUREFOLD_SECRET_AS_STRING", Severity.WARNING, SourceElementPositioningStrategies.DEFAULT)
@@ -151,6 +161,18 @@ private object Renderers : BaseDiagnosticRendererFactory() {
                 SurefoldDiagnostics.SUREFOLD_LATCH_BY_HAND,
                 "surefold: {0} hands a signal between threads by hand; use a Promise, " +
                     "Promise<Nothing, Unit> for a latch, completed with succeed and waited on with awaitValue",
+                CommonRenderers.STRING,
+            )
+            map.put(
+                SurefoldDiagnostics.SUREFOLD_LOCK_BY_HAND,
+                "surefold: {0} guards shared state with a lock by hand; keep the state in a Shared, " +
+                    "changed with update or modify, or several together in transact",
+                CommonRenderers.STRING,
+            )
+            map.put(
+                SurefoldDiagnostics.SUREFOLD_QUEUE_BY_HAND,
+                "surefold: {0} hands values between threads by hand; use a scope''s channel(capacity), " +
+                    "and select to wait on several",
                 CommonRenderers.STRING,
             )
             map.put(

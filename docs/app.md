@@ -389,6 +389,8 @@ The same plugin warns where code hand-rolls something Surefold provides:
 | `SUREFOLD_SLEEP_IN_TEST` | `Thread.sleep` or `TimeUnit.sleep` in test code | `eventually(within)` from `surefold-test`, or a [test clock](testing.md#time) |
 | `SUREFOLD_THREAD_BY_HAND` | `Thread(..)`, `Thread.ofVirtual`, `ofPlatform`, `startVirtualThread`, Kotlin's `thread { }`, an `Executors.new*` pool other than a scheduled one, `ThreadPoolExecutor` or `ForkJoinPool`, in main and test code | `scope { async { … } }`, or `parMap` over a list ([forking](core.md#forking)) |
 | `SUREFOLD_LATCH_BY_HAND` | `CountDownLatch`, `CyclicBarrier`, `Phaser`, or an empty `CompletableFuture()`, in main and test code | a `Promise`; `Promise<Nothing, Unit>` is a latch ([a value handed over once](core.md#a-value-handed-over-once)) |
+| `SUREFOLD_LOCK_BY_HAND` | Kotlin's `synchronized(..) { }`, `@Synchronized`, `ReentrantLock`, `ReentrantReadWriteLock` or `StampedLock`, in main and test code | a `Shared`, changed with `update` or `modify`, or several in `transact` ([values changed together](core.md#values-changed-together)) |
+| `SUREFOLD_QUEUE_BY_HAND` | `LinkedBlockingQueue`, `ArrayBlockingQueue`, `SynchronousQueue` or `LinkedTransferQueue`, in main and test code | a scope's `channel(capacity)`, and `select` to wait on several ([handing values between forks](core.md#handing-values-between-forks)) |
 
 Each is a warning, silenced where it is intended by name, for example
 `@Suppress("SUREFOLD_SLEEP_IN_TEST")`. A build with `allWarningsAsErrors` makes them blocking.

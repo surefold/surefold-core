@@ -56,11 +56,11 @@ more than in tests.
 
 ## Stack
 
-- [ ] **`spec-0312-threads`**: `SUREFOLD_THREAD_BY_HAND` and `SUREFOLD_LATCH_BY_HAND`, with their rows in
+- [x] **`spec-0312-threads`** (surefold/surefold-core#1111): `SUREFOLD_THREAD_BY_HAND` and `SUREFOLD_LATCH_BY_HAND`, with their rows in
       `docs/app.md`, `SKILL.md` and `llms.txt`.
       Done when: `SurefoldWiringPluginTest` compiles a project using each matched call and sees each warning,
       in main and test sources, and none from a file that suppresses it.
-- [ ] **`spec-0312-locks-queues`**: `SUREFOLD_LOCK_BY_HAND`, including the `@Synchronized` function checker, and
+- [x] **`spec-0312-locks-queues`**: `SUREFOLD_LOCK_BY_HAND`, including the `@Synchronized` function checker, and
       `SUREFOLD_QUEUE_BY_HAND`, with the same docs rows.
       Done when: the same, for these two.
 

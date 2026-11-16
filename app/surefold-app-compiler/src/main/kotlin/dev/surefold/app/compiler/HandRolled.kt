@@ -34,8 +34,8 @@ internal class HandRolledChecker(private val test: Boolean) : FirFunctionCallChe
     }
 
     /**
-     * Each warning [called] earns, named by what it called. A thread or latch is named in main and test code alike: a
-     * test's is the one an agent copies next (spec 0312).
+     * Each warning [called] earns, named by what it called. A thread, latch, lock or queue is named in main and test
+     * code alike: a test's is the one an agent copies next (spec 0312).
      */
     private fun handRolled(
         symbol: FirCallableSymbol<*>,
@@ -47,6 +47,8 @@ internal class HandRolledChecker(private val test: Boolean) : FirFunctionCallChe
             SurefoldDiagnostics.SUREFOLD_SCHEDULER_BY_HAND.takeIf { !test && schedules(symbol, called) },
             SurefoldDiagnostics.SUREFOLD_THREAD_BY_HAND.takeIf { startsThreads(symbol, called) },
             SurefoldDiagnostics.SUREFOLD_LATCH_BY_HAND.takeIf { latches(symbol, called, expression) },
+            SurefoldDiagnostics.SUREFOLD_LOCK_BY_HAND.takeIf { locks(symbol, called) },
+            SurefoldDiagnostics.SUREFOLD_QUEUE_BY_HAND.takeIf { queues(symbol, called) },
         )
 }
 
@@ -139,6 +141,28 @@ private fun latches(symbol: FirCallableSymbol<*>, called: CallableId, expression
     symbol is FirConstructorSymbol &&
         (called.classId in latchTypes ||
             (called.classId == completableFuture && expression.argumentList.arguments.isEmpty()))
+
+private val synchronizedCall = CallableId(FqName("kotlin"), Name.identifier("synchronized"))
+
+private val lockTypes =
+    setOf(
+        ClassId(FqName("java.util.concurrent.locks"), Name.identifier("ReentrantLock")),
+        ClassId(FqName("java.util.concurrent.locks"), Name.identifier("ReentrantReadWriteLock")),
+        ClassId(FqName("java.util.concurrent.locks"), Name.identifier("StampedLock")),
+    )
+
+/** Kotlin's `synchronized(lock) { }`, or a lock built here. `@Synchronized` is [SynchronizedChecker]'s. */
+private fun locks(symbol: FirCallableSymbol<*>, called: CallableId): Boolean =
+    called == synchronizedCall || (symbol is FirConstructorSymbol && called.classId in lockTypes)
+
+private val queueTypes =
+    setOf("LinkedBlockingQueue", "ArrayBlockingQueue", "SynchronousQueue", "LinkedTransferQueue")
+        .map { ClassId(FqName("java.util.concurrent"), Name.identifier(it)) }
+        .toSet()
+
+/** A blocking queue built here, to hand values from one thread to another. */
+private fun queues(symbol: FirCallableSymbol<*>, called: CallableId): Boolean =
+    symbol is FirConstructorSymbol && called.classId in queueTypes
 
 /**
  * `Thread.sleep`, `Timer(..)` for a constructor, whose name is the class's for Java and `<init>` for Kotlin, or `thread
