@@ -36,6 +36,7 @@ and the same-cache layer reentry restriction.
 | retain by result-specific expiry, with last-good fallback | `Cache(ttl = …, stale = …)` | `surefold-cache` |
 | finish shared cache work before releasing its dependencies | `Cache.closeAndJoin` in `onRelease` | `surefold-cache` |
 | explicit regional KMS roots, exact contexts and owned clients | [`KeyOperations`, `AwsKeyOperations`, `awsKeyOperations`](https://github.com/surefold/surefold-platform/blob/main/docs/kms-operations.md) | `surefold-tenancy-crypto-aws` (surefold-platform) |
+| borrow cached key material within a revocable scope | [`KeyCache.lease`, `KeyView.using`, `KeyCache.closeAndJoin`](https://github.com/surefold/surefold-platform/blob/main/docs/tenancy-crypto.md#retained-key-views) | `surefold-tenancy-crypto` (surefold-platform) |
 | trace JDBC executions without per-query wrapping | `DataSource.traced(openTelemetry)` | [`surefold-jdbc-otel`](https://github.com/surefold/surefold-integrations/blob/main/docs/jdbc-tracing.md) |
 
 The types the recipes are written against:
