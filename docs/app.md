@@ -429,11 +429,11 @@ plugins { id("dev.surefold.arch") version "<version>" }
 surefoldArch {
     baseline = file("gradle/arch-baseline.txt") // optional
     rule("app-sql-import", "application code reaches the database through a store port") {
-        code("doorlist.app..") // where the rule applies; `..` is the package and below
-        mustNotUse("doorlist.store.adapters.sql..")
+        code("shop.app..") // where the rule applies; `..` is the package and below
+        mustNotUse("shop.store.adapters.sql..")
     }
     rule("app-logback", "only the JSON encoder binds the app to the logging backend") {
-        onlyIn("doorlist.app.observability") // a package or a top-level class
+        onlyIn("shop.app.observability") // a package or a top-level class
         mayUse("ch.qos.logback..")
         compilations("main", "test") // main alone unless a rule says otherwise
     }
