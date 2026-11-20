@@ -49,8 +49,6 @@ object ArchPluginSuite : Suite(concurrent = false) {
             }
         }
 
-        // Fails until spec-0315-baseline is underneath: the compiler there accepts `baseline` and `root` and reports
-        // SUREFOLD_ARCH_STALE. Without it the first build fails with "Unsupported plugin option: ...:baseline".
         test("editing only the baseline compiles again, and reports a stale entry in a file that did not change") {
             withTempDirectory { dir ->
                 archProject(dir, rule = "$FORBID_B\n    baseline = file(\"arch-baseline.txt\")")
@@ -59,9 +57,10 @@ object ArchPluginSuite : Suite(concurrent = false) {
                 val baseline = dir.resolve("arch-baseline.txt").toFile()
                 baseline.writeText("src/main/kotlin/a/Uses.kt no-b\n")
 
+                // From the cache when an earlier run left this project's entry: paths are not inputs, so it relocates.
                 withClue("the baselined file compiles") {
-                    archRunner(dir, "classes", "--build-cache").build().task(":compileKotlin")?.outcome shouldBe
-                        TaskOutcome.SUCCESS
+                    val first = archRunner(dir, "classes", "--build-cache").build().task(":compileKotlin")?.outcome
+                    (first in setOf(TaskOutcome.SUCCESS, TaskOutcome.FROM_CACHE)) shouldBe true
                 }
                 baseline.appendText("src/main/kotlin/a/Clean.kt no-b\n")
                 val result = archRunner(dir, "classes", "--build-cache").buildAndFail()
@@ -69,7 +68,7 @@ object ArchPluginSuite : Suite(concurrent = false) {
                 withClue("FAILED is neither UP-TO-DATE nor FROM-CACHE: the compiler ran") {
                     result.task(":compileKotlin")?.outcome shouldBe TaskOutcome.FAILED
                 }
-                result.output shouldContain "[no-b] Clean.kt no longer breaks this rule"
+                result.output shouldContain "[no-b] src/main/kotlin/a/Clean.kt no longer breaks this rule"
             }
         }
     }

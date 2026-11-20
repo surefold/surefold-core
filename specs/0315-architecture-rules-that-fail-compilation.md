@@ -44,10 +44,12 @@ surefoldArch {
 ```
 
 Each rule reaches the compiler as one option, `-P plugin:dev.surefold.arch:rule=<id>|<kind>|<from>|<to>|<reason>`
-(`kind` is `forbid` or `only`), and the baseline as a `FilesSubpluginOption`, so both are `KotlinCompile` inputs and
-the build cache keys on them. The project directory, which baseline paths are relative to, goes as an
-`InternalSubpluginOption`: not an input, so a cache entry moves between checkouts. Rules
-apply to the main compilation only unless a rule says `compilations("test")`. The baseline is a checked-in text file:
+(`kind` is `forbid` or `only`). The baseline file is registered on the compile task as an input file, so the build
+cache keys on its content; its path, and the project directory baseline paths are relative to, go as
+`InternalSubpluginOption`s: not inputs, so a cache entry moves between checkouts. (A `FilesSubpluginOption` was the
+draft's plan, but outside kapt Kotlin 2.4's Gradle plugin keys one on its path string, and a baseline edit left the
+compile up to date.) Rules apply to the main compilation only unless a rule says `compilations("test")`. The
+baseline is a checked-in text file:
 
 ```text
 # path relative to the project directory, then rule id; a comment says why it is still here
@@ -89,8 +91,8 @@ module does not compile, and the baseline is the escape hatch, not `@Suppress`.
 - [ ] **`spec-0315-baseline`** — the baseline file, `SUREFOLD_ARCH_STALE`, missing-file and unknown-rule checks.
       Done when: a baselined file compiles, a new file with the same reference fails, a baselined file that no longer
       breaks the rule fails as stale.
-- [ ] **`spec-0315-gradle`** — `dev.surefold.arch` and `surefoldArch { }`, docs/modules.md row, a guide section with
-      a compiled example.
+- [ ] **`spec-0315-gradle`** — `dev.surefold.arch` and `surefoldArch { }`, docs/modules.md row, a guide section in
+      `docs/app.md` (a build-script fence, which no guide suite compiles).
       Done when: a TestKit build fails on a violation; editing only the baseline reruns `compileKotlin` (not
       `UP-TO-DATE`, not `FROM-CACHE`) and reports a stale entry in a file whose source did not change.
 
@@ -109,9 +111,10 @@ Approved by the owner on 2026-11-20, every question taken as recommended.
 1. **Does changing a rule or the baseline recheck untouched files under incremental compilation?** Kotlin's IC is
    expected to rebuild the module when plugin options or their input files change; unverified. Recommended: the last
    entry's TestKit test proves it, and if it fails the Gradle plugin marks the compile task non-incremental on a
-   changed baseline hash. Taken as recommended (owner, 2026-11-20).
-2. **Baseline by file + rule, or with the first consumer's counts?** A count stops a baselined file gaining a second violation
-   unseen; file + rule is what the owner asked for and is simpler. Recommended: file + rule now; counts if review
+   changed baseline hash. Taken as recommended (owner, 2026-11-20). Answered while building: editing only the
+   baseline reruns `compileKotlin` as a full rebuild, every source recompiled, so nothing more is needed.
+2. **Baseline by file + rule, or with the first consumer's counts?** A count stops a baselined file gaining a second
+   violation unseen; file + rule is what the owner asked for and is simpler. Recommended: file + rule now; counts if review
    finds baselined files growing. Taken as recommended (owner, 2026-11-20).
 3. **Where does the module live?** `core/` beside `surefold-compiler` (generic build tooling), or a new family.
    Recommended: `core/surefold-arch-compiler`; the Gradle plugin in `surefold-app-gradle`, as
