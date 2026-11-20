@@ -98,7 +98,8 @@ private class Walk(private val packageName: String, private val fileName: String
         when (element) {
             is FirQualifiedAccessExpression -> access(element)
             is FirResolvedTypeRef -> type(element.source, element.coneType)
-            is FirResolvedQualifier -> element.classId?.let { add(element.source, it.place(), it.fqName()) }
+            is FirResolvedQualifier ->
+                element.qualifierSymbol?.classId?.let { add(element.source, it.place(), it.fqName()) }
             is FirResolvedImport -> import(element)
         }
         element.acceptChildren(this)

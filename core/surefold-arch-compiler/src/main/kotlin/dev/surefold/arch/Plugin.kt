@@ -10,6 +10,7 @@ import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CommonConfigurationKeys
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
+import org.jetbrains.kotlin.config.MessageCollectorAccess
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirDeclarationChecker
@@ -67,6 +68,8 @@ class ArchCompilerPluginRegistrar : CompilerPluginRegistrar() {
 
     override val supportsK2: Boolean = true
 
+    // Rule and baseline faults are reported before any file is read, so there is no diagnostic reporter yet.
+    @OptIn(MessageCollectorAccess::class)
     override fun ExtensionStorage.registerExtensions(configuration: CompilerConfiguration) {
         val messages = configuration.get(CommonConfigurationKeys.MESSAGE_COLLECTOR_KEY)
         // Checkers loaded into a compiler they were not built for would fail out of sight: the build says so instead.
