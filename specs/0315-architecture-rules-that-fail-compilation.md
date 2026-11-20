@@ -81,18 +81,20 @@ module does not compile, and the baseline is the escape hatch, not `@Suppress`.
 
 ## Stack
 
-- [ ] **`spec-0315-module`** — the module, options, rule parsing, `SUREFOLD_ARCH_FORBIDDEN` on calls, property
-      accesses and constructors; `Compiling.kt` and an `ArchSuite` of failing snippets.
+- [x] **`spec-0315-module`** (surefold/surefold-core#1121) — the module, options, rule parsing,
+      `SUREFOLD_ARCH_FORBIDDEN` on calls, property accesses and constructors; `Compiling.kt` and `ForbiddenSuite` of
+      failing snippets.
       Done when: a snippet in `a..` calling `b.f()` under `mustNotUse("b..")` fails with the message above, an
       `onlyIn` rule passes inside and fails outside, and a malformed rule is `SUREFOLD_ARCH_CONFIG`.
-- [ ] **`spec-0315-references`** — type refs, supertypes, type arguments, annotations, callable references, imports and
-      aliases, type-alias expansion.
+- [x] **`spec-0315-references`** (surefold/surefold-core#1122) — type refs, supertypes, type arguments, annotations,
+      callable references, imports and aliases, type-alias expansion.
       Done when: one snippet per reference kind fails, and a fully qualified call with no import fails.
-- [ ] **`spec-0315-baseline`** — the baseline file, `SUREFOLD_ARCH_STALE`, missing-file and unknown-rule checks.
+- [x] **`spec-0315-baseline`** (surefold/surefold-core#1123) — the baseline file, `SUREFOLD_ARCH_STALE`, missing-file
+      and unknown-rule checks.
       Done when: a baselined file compiles, a new file with the same reference fails, a baselined file that no longer
       breaks the rule fails as stale.
-- [ ] **`spec-0315-gradle`** — `dev.surefold.arch` and `surefoldArch { }`, docs/modules.md row, a guide section in
-      `docs/app.md` (a build-script fence, which no guide suite compiles).
+- [x] **`spec-0315-gradle`** (surefold/surefold-core#1124) — `dev.surefold.arch` and `surefoldArch { }`,
+      docs/modules.md row, a guide section in `docs/app.md` (a build-script fence, which no guide suite compiles).
       Done when: a TestKit build fails on a violation; editing only the baseline reruns `compileKotlin` (not
       `UP-TO-DATE`, not `FROM-CACHE`) and reports a stale entry in a file whose source did not change.
 
@@ -114,8 +116,8 @@ Approved by the owner on 2026-11-20, every question taken as recommended.
    changed baseline hash. Taken as recommended (owner, 2026-11-20). Answered while building: editing only the
    baseline reruns `compileKotlin` as a full rebuild, every source recompiled, so nothing more is needed.
 2. **Baseline by file + rule, or with the first consumer's counts?** A count stops a baselined file gaining a second
-   violation unseen; file + rule is what the owner asked for and is simpler. Recommended: file + rule now; counts if review
-   finds baselined files growing. Taken as recommended (owner, 2026-11-20).
+   violation unseen; file + rule is what the owner asked for and is simpler. Recommended: file + rule now; counts if
+   review finds baselined files growing. Taken as recommended (owner, 2026-11-20).
 3. **Where does the module live?** `core/` beside `surefold-compiler` (generic build tooling), or a new family.
    Recommended: `core/surefold-arch-compiler`; the Gradle plugin in `surefold-app-gradle`, as
    `dev.surefold.compiler`'s is. Taken as recommended (owner, 2026-11-20).
