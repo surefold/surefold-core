@@ -43,8 +43,10 @@ surefoldArch {
 }
 ```
 
-Each rule reaches the compiler as one option, `-P plugin:dev.surefold.arch:rule=<id>|<reason>|<from>|<kind>|<to>`, and
-the baseline as a `FilesSubpluginOption`, so both are `KotlinCompile` inputs and the build cache keys on them. Rules
+Each rule reaches the compiler as one option, `-P plugin:dev.surefold.arch:rule=<id>|<kind>|<from>|<to>|<reason>`
+(`kind` is `forbid` or `only`), and the baseline as a `FilesSubpluginOption`, so both are `KotlinCompile` inputs and
+the build cache keys on them. The project directory, which baseline paths are relative to, goes as an
+`InternalSubpluginOption`: not an input, so a cache entry moves between checkouts. Rules
 apply to the main compilation only unless a rule says `compilations("test")`. The baseline is a checked-in text file:
 
 ```text
@@ -101,16 +103,22 @@ module does not compile, and the baseline is the escape hatch, not `@Suppress`.
 
 ## Open questions
 
+Approved by the owner on 2026-11-20, every question taken as recommended.
+
+
 1. **Does changing a rule or the baseline recheck untouched files under incremental compilation?** Kotlin's IC is
    expected to rebuild the module when plugin options or their input files change; unverified. Recommended: the last
    entry's TestKit test proves it, and if it fails the Gradle plugin marks the compile task non-incremental on a
-   changed baseline hash.
+   changed baseline hash. Taken as recommended (owner, 2026-11-20).
 2. **Baseline by file + rule, or with doorlist's counts?** A count stops a baselined file gaining a second violation
    unseen; file + rule is what the owner asked for and is simpler. Recommended: file + rule now; counts if review
-   finds baselined files growing.
+   finds baselined files growing. Taken as recommended (owner, 2026-11-20).
 3. **Where does the module live?** `core/` beside `surefold-compiler` (generic build tooling), or a new family.
-   Recommended: `core/surefold-arch-compiler`; the Gradle plugin in `surefold-app-gradle`, as `dev.surefold.compiler`'s is.
+   Recommended: `core/surefold-arch-compiler`; the Gradle plugin in `surefold-app-gradle`, as
+   `dev.surefold.compiler`'s is. Taken as recommended (owner, 2026-11-20).
 4. **IDE and the baseline.** The editor reads the baseline when the Gradle import builds the session, so a line added
-   to it shows only after a re-sync. Recommended: accept it and say so in the guide; the build is the gate.
+   to it shows only after a re-sync. Recommended: accept it and say so in the guide; the build is the gate. Taken as
+   recommended (owner, 2026-11-20).
 5. **Patterns.** ArchUnit's `..` package suffix plus exact top-level class names, or globs on file paths too.
-   Recommended: packages and classes only: files move, packages are the architecture.
+   Recommended: packages and classes only: files move, packages are the architecture. Taken as recommended (owner,
+   2026-11-20).
