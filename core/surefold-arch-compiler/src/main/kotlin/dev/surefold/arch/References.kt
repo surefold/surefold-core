@@ -10,11 +10,19 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirDeclarationChecker
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.declarations.FirResolvedImport
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirLocalPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.FirResolvedTypeRef
+import org.jetbrains.kotlin.fir.types.abbreviatedType
+import org.jetbrains.kotlin.fir.types.lowerBoundIfFlexible
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
 
@@ -28,19 +36,21 @@ internal class ReferenceChecker(private val rules: List<Rule>) : FirDeclarationC
     override fun check(declaration: FirFile) {
         val walk = Walk(declaration.packageDirective.packageFqName.asString(), declaration.name)
         declaration.accept(walk)
-        walk.found.forEach { reference ->
-            rules
-                .filter { it.brokenBy(reference.code, reference.target) }
-                .forEach { rule ->
-                    reporter.reportOn(
-                        reference.source,
-                        ArchDiagnostics.SUREFOLD_ARCH_FORBIDDEN,
-                        "[${rule.id}] ${reference.codeName} uses ${reference.targetName}; ${rule.reason}. " +
-                            "Fix the reference, or baseline '${declaration.name}' for ${rule.id}",
-                        context,
-                    )
-                }
-        }
+        walk.found
+            .flatMap { reference ->
+                rules.filter { it.brokenBy(reference.code, reference.target) }.map { reference to it }
+            }
+            // One error a place a rule: `b.Single.size` is the object and the property, both written from one `b`.
+            .distinctBy { (reference, rule) -> reference.source.startOffset to rule.id }
+            .forEach { (reference, rule) ->
+                reporter.reportOn(
+                    reference.source,
+                    ArchDiagnostics.SUREFOLD_ARCH_FORBIDDEN,
+                    "[${rule.id}] ${reference.codeName} uses ${reference.targetName}; ${rule.reason}. " +
+                        "Fix the reference, or baseline '${declaration.name}' for ${rule.id}",
+                    context,
+                )
+            }
     }
 }
 
@@ -64,8 +74,34 @@ private class Walk(private val packageName: String, private val fileName: String
             topLevelClass = null
             return
         }
-        if (element is FirQualifiedAccessExpression) access(element)
+        when (element) {
+            is FirQualifiedAccessExpression -> access(element)
+            is FirResolvedTypeRef -> type(element.source, element.coneType)
+            is FirResolvedQualifier -> element.classId?.let { add(element.source, it.place(), it.fqName()) }
+            is FirResolvedImport -> import(element)
+        }
         element.acceptChildren(this)
+    }
+
+    /** A type as written, its arguments, and the alias it was written as, each a reference of its own. */
+    private fun type(source: KtSourceElement?, type: ConeKotlinType) {
+        val rigid = type.lowerBoundIfFlexible()
+        (rigid as? ConeClassLikeType)?.lookupTag?.classId?.let { add(source, it.place(), it.fqName()) }
+        rigid.abbreviatedType?.let { type(source, it) }
+        rigid.typeArguments.forEach { argument ->
+            (argument as? ConeKotlinTypeProjection)?.let { type(source, it.type) }
+        }
+    }
+
+    /** An import names a package, a class in one, or a member of a class, whether or not anything uses it. */
+    private fun import(import: FirResolvedImport) {
+        val packageName = import.packageFqName.asString()
+        val outermost = import.relativeParentClassName?.pathSegments()?.firstOrNull()?.let { "$packageName.$it" }
+        val target =
+            if (import.isAllUnder || import.relativeParentClassName != null || import.importedName == null) outermost
+            else "$packageName.${import.importedName}"
+        val name = if (import.isAllUnder) "${import.importedFqName}.*" else import.importedFqName.toString()
+        add(import.source, Place(packageName, target), name)
     }
 
     private fun access(access: FirQualifiedAccessExpression) {
@@ -88,5 +124,7 @@ private class Walk(private val packageName: String, private val fileName: String
 }
 
 private fun ClassId.outermost(): String = outermostClassId.asSingleFqName().asString()
+
+private fun ClassId.place(): Place = Place(packageFqName.asString(), outermost())
 
 private fun ClassId.fqName(): String = asSingleFqName().asString()
