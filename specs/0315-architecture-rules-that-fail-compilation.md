@@ -3,8 +3,8 @@
 ## Problem
 
 A service's dependency rules ("the app layer does not touch the SQL layer") are kept today by ArchUnit tests or by
-regex scans in the build. doorlist, the first consumer, does the second: `appSqlRules` in
-`buildSrc/.../AgentHygiene.kt` counts `import doorlist.store.adapters.sql.` and `import ch.qos.logback.` lines in
+regex scans in the build. The first consumer, a private service, does the second: `appSqlRules` in
+`buildSrc/.../AgentHygiene.kt` counts `import shop.store.adapters.sql.` and `import ch.qos.logback.` lines in
 `app/src/main`, against 95 `app-sql-import` entries in `gradle/hygiene-counts.allowlist`. A regex misses a fully
 qualified call, a supertype, a type alias or a star import, and either kind of check fails a later task, never the
 editor. An agent writes the violation, gets a green compile, and learns about it at `check`, if at all.
@@ -15,17 +15,17 @@ resolve what each file actually references and make a broken rule a compile erro
 ## Not doing
 
 - **Any rule but dependencies.** No naming, layering cycles, annotation or "classes in X are final" rules. Later specs.
-- **doorlist knowledge.** The plugin knows nothing of doorlist; doorlist's rules live in doorlist's build.
+- **Any one service's knowledge.** The plugin is generic; a service's rules live in its own build.
 - **Java sources, and what inline or generated code references.** Kotlin source as written, as K2 resolves it.
 - **Counts per file.** The baseline is file + rule (question 2).
-- **Migrating doorlist.** Its own spec, once this ships to a snapshot.
+- **Migrating the first consumer.** Its own spec, in its own repository, once this ships to a snapshot.
 
 ## Shape
 
 A module `core/surefold-arch-compiler` (plugin id `dev.surefold.arch`), shaped like `surefold-compiler`: a
 `CommandLineProcessor`, a `CompilerPluginRegistrar` that checks `builtForThisCompiler()`, a `FirExtensionRegistrar` that
 adds checkers only. Its Gradle plugin `dev.surefold.arch` lives in `surefold-app-gradle` beside `SurefoldForksPlugin`.
-doorlist's two rules, in `app/build.gradle.kts`:
+The first consumer's two rules, in its `app/build.gradle.kts` (package names changed here as `shop`):
 
 ```kotlin
 plugins { id("dev.surefold.arch") }
@@ -33,11 +33,11 @@ plugins { id("dev.surefold.arch") }
 surefoldArch {
     baseline = file("gradle/arch-baseline.txt")
     rule("app-sql-import", "application code reaches the database through a store port") {
-        code("doorlist.app..")                      // where the rule applies; `..` = the package and below
-        mustNotUse("doorlist.store.adapters.sql..")
+        code("shop.app..")                      // where the rule applies; `..` = the package and below
+        mustNotUse("shop.store.adapters.sql..")
     }
     rule("app-logback", "only the JSON encoder binds the app to the logging backend") {
-        onlyIn("doorlist.app.observability")       // a package pattern or a top-level class
+        onlyIn("shop.app.observability")       // a package pattern or a top-level class
         mayUse("ch.qos.logback..")
     }
 }
@@ -51,7 +51,7 @@ apply to the main compilation only unless a rule says `compilations("test")`. Th
 
 ```text
 # path relative to the project directory, then rule id; a comment says why it is still here
-src/main/kotlin/doorlist/app/Bootstrap.kt app-sql-import  # why this file still breaks it
+src/main/kotlin/shop/app/Bootstrap.kt app-sql-import  # why this file still breaks it
 ```
 
 A reference is the resolved symbol behind: a type ref anywhere (property, parameter, return, supertype, type argument,
@@ -60,7 +60,7 @@ alias counts as both itself and its expansion. Three diagnostics, all errors:
 
 | Diagnostic | On | Says |
 |---|---|---|
-| `SUREFOLD_ARCH_FORBIDDEN` | each offending reference | `[app-sql-import] doorlist.app.Bootstrap uses doorlist.store.adapters.sql.Tx; application code reaches the database through a store port. Fix the reference, or baseline it: 'src/main/kotlin/doorlist/app/Bootstrap.kt app-sql-import' in gradle/arch-baseline.txt` |
+| `SUREFOLD_ARCH_FORBIDDEN` | each offending reference | `[app-sql-import] shop.app.Bootstrap uses shop.store.adapters.sql.Tx; application code reaches the database through a store port. Fix the reference, or baseline it: 'src/main/kotlin/shop/app/Bootstrap.kt app-sql-import' in gradle/arch-baseline.txt` |
 | `SUREFOLD_ARCH_STALE` | the file's package directive | `[app-sql-import] Bootstrap.kt no longer breaks this rule: delete its line from gradle/arch-baseline.txt` |
 | `SUREFOLD_ARCH_CONFIG` | the message collector | a rule that does not parse, a duplicate id, a baseline line naming an unknown rule or a missing file |
 
@@ -110,7 +110,7 @@ Approved by the owner on 2026-11-20, every question taken as recommended.
    expected to rebuild the module when plugin options or their input files change; unverified. Recommended: the last
    entry's TestKit test proves it, and if it fails the Gradle plugin marks the compile task non-incremental on a
    changed baseline hash. Taken as recommended (owner, 2026-11-20).
-2. **Baseline by file + rule, or with doorlist's counts?** A count stops a baselined file gaining a second violation
+2. **Baseline by file + rule, or with the first consumer's counts?** A count stops a baselined file gaining a second violation
    unseen; file + rule is what the owner asked for and is simpler. Recommended: file + rule now; counts if review
    finds baselined files growing. Taken as recommended (owner, 2026-11-20).
 3. **Where does the module live?** `core/` beside `surefold-compiler` (generic build tooling), or a new family.
