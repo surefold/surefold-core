@@ -38,6 +38,21 @@ object ArchPluginSuite : Suite(concurrent = false) {
             }
         }
 
+        test("a baseline for a main-only rule lets the test compilation compile") {
+            withTempDirectory { dir ->
+                archProject(dir, rule = "$FORBID_B\n    baseline = file(\"arch-baseline.txt\")")
+                source(dir, "main", USES_B, "a/Uses.kt")
+                source(dir, "test", "package a\n\nfun tested() = uses()\n", "a/UsesTest.kt")
+                dir.resolve("arch-baseline.txt").toFile().writeText("src/main/kotlin/a/Uses.kt no-b\n")
+
+                val result = archRunner(dir, "testClasses").build()
+
+                withClue(result.output) {
+                    result.task(":compileTestKotlin")?.outcome shouldBe TaskOutcome.SUCCESS
+                }
+            }
+        }
+
         test("a rule with no mustNotUse fails configuration, naming the rule") {
             withTempDirectory { dir ->
                 archProject(dir, rule = """rule("half", "why") { code("a..") }""")

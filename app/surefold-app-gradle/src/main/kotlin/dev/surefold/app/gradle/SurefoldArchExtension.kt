@@ -23,7 +23,7 @@ abstract class SurefoldArchExtension {
 }
 
 /** One rule: `code` with `mustNotUse`, or `onlyIn` with `mayUse`. Patterns are `a.b..` for a package and below. */
-class ArchRule internal constructor(private val id: String, private val reason: String) {
+class ArchRule internal constructor(internal val id: String, private val reason: String) {
     private var code: String? = null
     private var mustNotUse: String? = null
     private var onlyIn: String? = null

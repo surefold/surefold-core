@@ -43,12 +43,14 @@ class SurefoldArchPlugin : KotlinCompilerPluginSupportPlugin {
         }
         return project.provider {
             val rules = arch.rules.filter { name in it.compilations }.map { SubpluginOption("rule", it.option()) }
+            // Every rule the build declares, so the baseline's lines for rules this compilation skips still read.
+            val declared = arch.rules.map { SubpluginOption("declared", it.id) }
             // Paths are not inputs, so a cache entry moves between checkouts.
             val baseline =
                 arch.baseline.orNull?.asFile?.let {
                     listOf(InternalSubpluginOption("baseline", it.absolutePath), InternalSubpluginOption("root", root))
                 }
-            rules + baseline.orEmpty()
+            rules + declared + baseline.orEmpty()
         }
     }
 
