@@ -1,5 +1,6 @@
 package dev.surefold.arch
 
+import java.io.File
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -30,28 +31,48 @@ import org.jetbrains.kotlin.name.ClassId
  * Every reference in a file, by the symbol it resolved to, checked against every rule (spec 0315). One walk of the file
  * rather than a checker per kind of reference, so a file's whole verdict is known in one place.
  */
-internal class ReferenceChecker(private val rules: List<Rule>) : FirDeclarationChecker<FirFile>(MppCheckerKind.Common) {
+internal class ReferenceChecker(private val check: Check) : FirDeclarationChecker<FirFile>(MppCheckerKind.Common) {
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirFile) {
         val walk = Walk(declaration.packageDirective.packageFqName.asString(), declaration.name)
         declaration.accept(walk)
-        walk.found
-            .flatMap { reference ->
-                rules.filter { it.brokenBy(reference.code, reference.target) }.map { reference to it }
-            }
-            // One error a place a rule: `b.Single.size` is the object and the property, both written from one `b`.
-            .distinctBy { (reference, rule) -> reference.source.startOffset to rule.id }
-            .forEach { (reference, rule) ->
+        val path = declaration.pathFrom(check.root)
+        val excused = { rule: Rule -> check.baseline?.excuses(path, rule.id) == true }
+        val broken =
+            walk.found
+                .flatMap { found -> check.rules.filter { it.brokenBy(found.code, found.target) }.map { found to it } }
+                // One error a place a rule: `b.Single.size` is the object and the property, both written from one `b`.
+                .distinctBy { (found, rule) -> found.source.startOffset to rule.id }
+        val where = check.baseline?.let { " in ${it.name}" }.orEmpty()
+        broken
+            .filterNot { (_, rule) -> excused(rule) }
+            .forEach { (found, rule) ->
                 reporter.reportOn(
-                    reference.source,
+                    found.source,
                     ArchDiagnostics.SUREFOLD_ARCH_FORBIDDEN,
-                    "[${rule.id}] ${reference.codeName} uses ${reference.targetName}; ${rule.reason}. " +
-                        "Fix the reference, or baseline '${declaration.name}' for ${rule.id}",
+                    "[${rule.id}] ${found.codeName} uses ${found.targetName}; ${rule.reason}. " +
+                        "Fix the reference, or baseline it: '$path ${rule.id}'$where",
+                    context,
+                )
+            }
+        check.rules
+            .filter { rule -> excused(rule) && broken.none { it.second == rule } }
+            .forEach { rule ->
+                reporter.reportOn(
+                    declaration.packageDirective.source ?: declaration.source,
+                    ArchDiagnostics.SUREFOLD_ARCH_STALE,
+                    "[${rule.id}] $path no longer breaks this rule: delete its line from ${check.baseline?.name}",
                     context,
                 )
             }
     }
+}
+
+/** The file's path from [root], as the baseline writes it, or its name where there is no root. */
+private fun FirFile.pathFrom(root: File?): String {
+    val file = sourceFile?.path?.let { File(it).canonicalFile }
+    return file?.let { root?.let(file::relativeToOrNull) }?.invariantSeparatorsPath ?: name
 }
 
 /** One reference: where it is written, the code it is in, and what it refers to. */

@@ -39,6 +39,9 @@ tasks.named<JavaCompile>("compileTestJava") {
 
 // A snippet's compiler loads the plugin as a consumer's does, from its classes and its service files.
 tasks.withType<Test>().configureEach {
+    // The first compiles in a test JVM load and warm the whole Kotlin compiler, several at once: on a loaded machine
+    // that alone passed the 60s every other test gets, though no compile hung (spec 0315).
+    systemProperty("surefold.junit.timeout.default", "5m")
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(testJdk) })
     val plugin = sourceSets.main.get().output
     inputs.files(plugin).withPropertyName("plugin")
