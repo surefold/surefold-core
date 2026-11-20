@@ -3,7 +3,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/dev.surefold/surefold?label=maven%20central)](https://central.sonatype.com/artifact/dev.surefold/surefold)
 [![Build](https://github.com/surefold/surefold-core/actions/workflows/build.yml/badge.svg)](https://github.com/surefold/surefold-core/actions/workflows/build.yml)
 [![Coverage](https://img.shields.io/badge/coverage-%E2%89%A590%25%20enforced-brightgreen)](AGENTS.md#verifying)
-[![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.4.21-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![JDK](https://img.shields.io/badge/jdk-25%2B-brightgreen)](https://openjdk.org/projects/jdk/25/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![Status](https://img.shields.io/badge/status-experimental-orange)](#status)
@@ -222,7 +222,7 @@ newer than the latest release; they are marked where they appear.
 
 ## Try it
 
-Surefold needs **JDK 25 or newer** at runtime and is built with **Kotlin 2.4.10**.
+Surefold needs **JDK 25 or newer** at runtime and is built with **Kotlin 2.4.21**.
 JDK 25 is required because earlier JDKs pin a virtual thread's carrier while
 it blocks inside `synchronized`, which can exhaust the carriers when a library
 such as a JDBC driver or JSON serializer synchronizes internally. JDK 24 removed

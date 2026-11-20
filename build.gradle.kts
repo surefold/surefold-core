@@ -6,9 +6,9 @@ buildscript {
 }
 
 plugins {
-    kotlin("jvm") version "2.4.10" apply false
+    kotlin("jvm") version "2.4.21" apply false
     // A failed `expect` in surefold-junit's suites draws its values (spec 0175).
-    kotlin("plugin.power-assert") version "2.4.10" apply false
+    kotlin("plugin.power-assert") version "2.4.21" apply false
     id("com.diffplug.spotless") version "8.10.0"
     id("dev.detekt") version "2.0.0-alpha.6" apply false
     id("org.jetbrains.kotlinx.kover") version "0.9.9"
@@ -45,7 +45,7 @@ val scmVer: String = scmVersion.version
  * Written once: a plugin built against one compiler and loaded into another fails at a consumer's compile, or quietly
  * in their editor, and a version number repeated in three build scripts is three chances for that to happen on a bump.
  */
-val kotlinVersion: String = "2.4.10"
+val kotlinVersion: String = "2.4.21"
 
 // kotlinlang matches `kotlin.code.style=official`. `.editorconfig` sets the line length and indent.
 fun com.diffplug.gradle.spotless.FormatExtension.ktrsFormat() {

@@ -84,7 +84,7 @@ object PersistentBatchSuite : Suite() {
         val journal = AppendCounting()
         val opened = CountDownLatch(1)
         val totals = CopyOnWriteArrayList<Int>()
-        val _ = scope {
+        scope {
             journal(journal)
             val batchTill = spawn("batchTill", batchTill(batch, opened))
             (1..n).forEach { batchTill.tell(BatchRing(it, totals)) }
@@ -147,7 +147,7 @@ object PersistentBatchSuite : Suite() {
             val journal = AppendCounting()
             val snapshots = InMemorySnapshots()
             val opened = CountDownLatch(1)
-            val _ = scope {
+            scope {
                 journal(journal)
                 snapshots(snapshots)
                 val batchTill = spawn("batchTill", batchTill(batch = 64, opened, every = 10))

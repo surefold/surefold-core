@@ -11,7 +11,7 @@ dependencies {
     // The TLS test certificates (spec 0073), and freePort() for each node's port (spec 0197).
     testImplementation(testFixtures(project(":surefold-actor-remote")))
     // GuideExampleTest compiles the examples out of docs/cluster.md (spec 0084).
-    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.10")
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.21")
     // The guide's read model follows the journal on a stream (spec 0084).
     testImplementation(project(":surefold-actor-projection"))
     testImplementation(project(":surefold-stream-forks"))

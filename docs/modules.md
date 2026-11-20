@@ -10,7 +10,7 @@ transitive dependency fails the build.
 
 - **JDK 25 or newer** at runtime. The libraries are compiled for 25; see
   [why](core.md#requirements-and-limitations).
-- **Kotlin**: built with Kotlin 2.4.10.
+- **Kotlin**: built with Kotlin 2.4.21.
 - **Group**: `dev.surefold` (`io.github.matthewjones372` up to 0.17.0). Every
   published module shares one version.
 

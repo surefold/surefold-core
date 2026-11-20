@@ -21,7 +21,7 @@ dependencies {
     testImplementation("org.junit.platform:junit-platform-launcher")
     testImplementation("org.junit.platform:junit-platform-reporting")
     // ExpectationsCompileTest compiles suites that must not compile.
-    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.10")
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.21")
 }
 
 tasks.test {

@@ -136,7 +136,7 @@ object ScopedSuite : Suite() {
             val log = freshLog()
             val moving = TestClock()
             clock.locally(moving) {
-                val _ = scope {
+                scope {
                     val lamp = spawn("lamp", lamp(log))
                     lamp.tell(On)
                     lamp.tell(Brighter)
