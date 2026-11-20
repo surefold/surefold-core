@@ -97,6 +97,12 @@ module does not compile, and the baseline is the escape hatch, not `@Suppress`.
       docs/modules.md row, a guide section in `docs/app.md` (a build-script fence, which no guide suite compiles).
       Done when: a TestKit build fails on a violation; editing only the baseline reruns `compileKotlin` (not
       `UP-TO-DATE`, not `FROM-CACHE`) and reports a stale entry in a file whose source did not change.
+- [x] **`spec-0315-baseline-per-compilation`** (fix found by the first consumer) — one baseline serves every
+      compilation, but a compilation is told only the rules it checks, so a test compilation with no rules refused
+      every line as `names rule …, which no rule is called`. The Gradle plugin now also passes `declared=<id>` for
+      every rule in `surefoldArch { }`; a line naming a declared rule this compilation skips is read past.
+      Done when: a TestKit build with a main-only rule and a baseline compiles its test sources, and the compiler
+      reads past a line for a declared, unchecked rule while still refusing one nobody declared.
 
 ## Acceptance
 

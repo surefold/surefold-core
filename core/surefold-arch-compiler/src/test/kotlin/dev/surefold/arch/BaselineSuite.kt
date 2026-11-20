@@ -48,6 +48,23 @@ object BaselineSuite : Suite() {
             said.output shouldContain "surefold: [x-only] a (Caller.kt) uses b.helper; only x reaches b."
         }
 
+        test("a line for a rule the build declares but this compilation does not check is read past") {
+            val clean = "a/Caller.kt" to "package a\n\nval n = 1\n"
+
+            val none = compile(mapOf(B, clean), emptyList(), BASELINE, OPTIONS + "declared=a-not-b")
+            val other = compile(mapOf(B, clean), listOf(OTHER), BASELINE, OPTIONS + "declared=a-not-b")
+
+            withClue(none.output) { none.succeeded shouldBe true }
+            withClue(other.output) { other.succeeded shouldBe true }
+        }
+
+        test("without the declared ids, a line for a rule this compilation does not check still fails") {
+            val said = compile(mapOf(B, CALLER), listOf(OTHER), BASELINE, OPTIONS)
+
+            said.succeeded shouldBe false
+            said.output shouldContain "SUREFOLD_ARCH_CONFIG: gradle/baseline.txt line 3 names rule a-not-b"
+        }
+
         test("a baseline line naming a rule nobody declared, or a file that is not there, fails the compile") {
             val said =
                 compile(
@@ -68,6 +85,8 @@ object BaselineSuite : Suite() {
 }
 
 private const val FORBID = "a-not-b|forbid|a..|b..|a stays out of b"
+
+private const val OTHER = "c-not-b|forbid|c..|b..|c stays out of b"
 
 private val OPTIONS = listOf("baseline={dir}/gradle/baseline.txt", "root={dir}")
 

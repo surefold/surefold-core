@@ -28,6 +28,8 @@ internal val BASELINE = CompilerConfigurationKey.create<String>("the baseline fi
 
 internal val ROOT = CompilerConfigurationKey.create<String>("the directory baseline paths are from")
 
+internal val DECLARED = CompilerConfigurationKey.create<List<String>>("every rule id the build declares")
+
 /** The rules, one option each, as the Gradle plugin writes them from `surefoldArch { }`. */
 @OptIn(ExperimentalCompilerApi::class)
 class ArchCommandLineProcessor : CommandLineProcessor {
@@ -45,6 +47,14 @@ class ArchCommandLineProcessor : CommandLineProcessor {
             ),
             CliOption("baseline", "<path>", "Files excused from a rule, a line each: path rule-id", required = false),
             CliOption("root", "<path>", "The directory the baseline's paths are from", required = false),
+            CliOption(
+                optionName = "declared",
+                valueDescription = "<rule id>",
+                description =
+                    "A rule the build declares, checked in this compilation or not; its baseline lines are valid",
+                required = false,
+                allowMultipleOccurrences = true,
+            ),
         )
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
@@ -52,6 +62,7 @@ class ArchCommandLineProcessor : CommandLineProcessor {
             "rule" -> configuration.appendList(RULES, value)
             "baseline" -> configuration.put(BASELINE, value)
             "root" -> configuration.put(ROOT, value)
+            "declared" -> configuration.appendList(DECLARED, value)
             else -> error("unknown option ${option.optionName}")
         }
     }
@@ -81,7 +92,12 @@ class ArchCompilerPluginRegistrar : CompilerPluginRegistrar() {
         val root = configuration[ROOT]?.let { File(it).canonicalFile }
         val (baseline, baselineFaults) =
             configuration[BASELINE]?.let { path ->
-                readBaseline(File(path), root ?: File("."), rules.map { it.id }.toSet())
+                // One baseline serves every compilation, so a line may name a rule this one does not check.
+                readBaseline(
+                    File(path),
+                    root ?: File("."),
+                    rules.map { it.id }.toSet() + configuration.getList(DECLARED),
+                )
             } ?: (null to emptyList())
         val faults = ruleFaults + baselineFaults
         // A rule that does not read checks nothing, which a passing build would hide.
