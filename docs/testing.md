@@ -606,8 +606,8 @@ a check it is handed as a statement.
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 
 plugins {
-    kotlin("jvm") version "2.4.10"
-    kotlin("plugin.power-assert") version "2.4.10"
+    kotlin("jvm") version "2.4.21"
+    kotlin("plugin.power-assert") version "2.4.21"
 }
 
 @OptIn(ExperimentalKotlinGradlePluginApi::class)

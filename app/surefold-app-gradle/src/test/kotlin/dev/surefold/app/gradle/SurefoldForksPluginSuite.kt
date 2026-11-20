@@ -71,7 +71,7 @@ private fun forksProject(dir: Path, source: String) {
         .writeText(
             """
         plugins {
-            kotlin("jvm") version "2.4.10"
+            kotlin("jvm") version "2.4.21"
             id("dev.surefold.compiler") version "$version"
         }
 

@@ -14,7 +14,7 @@ dependencies {
     testFixturesImplementation(project(":surefold-assert"))
 
     // ActorsGuideTest compiles the examples out of docs/actors.md (spec 0089).
-    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.10")
+    testImplementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:2.4.21")
 }
 
 // Read at configuration time, so the configuration cache survives it.

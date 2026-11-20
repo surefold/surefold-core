@@ -29,7 +29,7 @@ object BatchingSuite : Suite() {
                         stay()
                     }
                     .onStart { opened.await() }
-            val _ = scope {
+            scope {
                 val actor = spawn("runs", runs)
                 (1..3).forEach(actor::tell)
                 opened.countDown()
@@ -49,7 +49,7 @@ object BatchingSuite : Suite() {
                         stay()
                     }
                     .onStart { opened.await() }
-            val _ = scope {
+            scope {
                 val actor = spawn("runs", runs)
                 logAnnotated("request_id" to "r-1") { actor.tell(1) }
                 actor.tell(2)
@@ -68,7 +68,7 @@ object BatchingSuite : Suite() {
                     seen += run.toList() to requestHere()
                     stay()
                 }
-            val _ = scope {
+            scope {
                 val actor = spawn("runs", runs)
                 (1..3).forEach { n -> logAnnotated("request_id" to "r-$n") { actor.tell(n) } }
                 awaitIdle()
@@ -107,7 +107,7 @@ object BatchingSuite : Suite() {
             val letters = CopyOnWriteArrayList<DeadLetter>()
             val opened = CountDownLatch(1)
             val runs = batching<Int, Unit>(Unit, batch = 64) { _, _, _ -> unhandled() }.onStart { opened.await() }
-            val _ = scope {
+            scope {
                 onDeadLetter(letters::add)
                 val actor = spawn("runs", runs)
                 (1..3).forEach(actor::tell)

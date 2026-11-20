@@ -155,7 +155,7 @@ object ProducerSuite : Suite() {
         test("a scope that closes straight after sending waits for every command to be confirmed first") {
             val journal = InMemoryJournal()
 
-            val _ = scope {
+            scope {
                 journal(journal)
                 val ledgers = spawn("ledgers", entities(passivateAfter = 1.minutes) { id -> ledger(id) })
                 val producer = producer("till") { id -> ledgers.entity(id) }

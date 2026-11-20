@@ -42,7 +42,7 @@ internal fun project(dir: Path, wiring: String, graph: String) {
         .writeText(
             """
         plugins {
-            kotlin("jvm") version "2.4.10"
+            kotlin("jvm") version "2.4.21"
             id("dev.surefold.wiring") version "$version"
         }
 
