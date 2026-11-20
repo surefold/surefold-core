@@ -15,7 +15,7 @@ object ForbiddenSuite : Suite() {
             said.succeeded shouldBe false
             said.output shouldContain
                 "ERROR: Caller.kt:4: surefold: [a-not-b] a.Caller uses b.helper; a stays out of b. " +
-                    "Fix the reference, or baseline 'Caller.kt' for a-not-b"
+                    "Fix the reference, or baseline it: 'Caller.kt a-not-b'"
         }
 
         test("a property read and a constructor are references too") {

@@ -25,6 +25,16 @@ object ArchDiagnostics : KtDiagnosticsContainer() {
             Renderers,
         )
 
+    /** A file the baseline excuses from a rule it no longer breaks: the line goes, so the baseline only shrinks. */
+    val SUREFOLD_ARCH_STALE: KtDiagnosticFactory1<String> =
+        KtDiagnosticFactory1(
+            "SUREFOLD_ARCH_STALE",
+            Severity.ERROR,
+            SourceElementPositioningStrategies.DEFAULT,
+            psiElement,
+            Renderers,
+        )
+
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = Renderers
 }
 
@@ -56,5 +66,6 @@ private object Renderers : BaseDiagnosticRendererFactory() {
     override val MAP: KtDiagnosticFactoryToRendererMap by
         KtDiagnosticFactoryToRendererMap("SurefoldArch") { map ->
             map.put(ArchDiagnostics.SUREFOLD_ARCH_FORBIDDEN, "surefold: {0}", CommonRenderers.STRING)
+            map.put(ArchDiagnostics.SUREFOLD_ARCH_STALE, "surefold: {0}", CommonRenderers.STRING)
         }
 }
