@@ -16,6 +16,12 @@ gradlePlugin {
             displayName = "surefold compiler checks"
             description = "Fails a compile where a Deferred, Channel or Scope outlives the scope that ends it."
         }
+        create("surefoldArch") {
+            id = "dev.surefold.arch"
+            implementationClass = "dev.surefold.app.gradle.SurefoldArchPlugin"
+            displayName = "surefold architecture rules"
+            description = "Fails a compile where code breaks one of the build's own dependency rules."
+        }
     }
 }
 
@@ -61,6 +67,7 @@ val checkerCoordinates =
         property("group", project.group.toString())
         property("artifact", "surefold-app-compiler")
         property("forksArtifact", "surefold-compiler")
+        property("archArtifact", "surefold-arch-compiler")
         property("version", project.version.toString())
     }
 
@@ -85,6 +92,7 @@ tasks.test {
     dependsOn(
         ":surefold-app-compiler:publishAllPublicationsToLocalRepository",
         ":surefold-compiler:publishAllPublicationsToLocalRepository",
+        ":surefold-arch-compiler:publishAllPublicationsToLocalRepository",
         "publishAllPublicationsToLocalRepository",
     )
     jvmArgumentProviders.add(
