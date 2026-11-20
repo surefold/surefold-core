@@ -99,6 +99,8 @@ val moduleDescriptions =
             "surefold forks in a seeded order: explore finds the order that breaks a test, replay runs it again.",
         "surefold-compiler" to
             "surefold's structure rules in the compiler: a Deferred that outlives its scope fails to compile.",
+        "surefold-arch-compiler" to
+            "Architecture rules in the compiler: a reference a dependency rule forbids fails to compile.",
         "surefold-structured" to "surefold over the JDK's StructuredTaskScope: a scope the thread dump can see.",
         "surefold-actor" to
             "An actor as a value and a step, on virtual threads: no actor system, and tests that never wait.",
@@ -128,7 +130,7 @@ val testedByRunningABuild = gradlePluginModules + "surefold-app-compiler"
 
 // The other compiler plugin, whose tests compile snippets in their own JVM: on 21 with the build tools, and on
 // Jupiter, as the plugins beside it are.
-val compilerPlugins = setOf("surefold-app-compiler", "surefold-compiler")
+val compilerPlugins = setOf("surefold-app-compiler", "surefold-compiler", "surefold-arch-compiler")
 
 // surefold-junit and what it runs on keep their tests on Jupiter: a runner cannot report on its own parts (spec 0197).
 val surefoldJunitRunsOn =

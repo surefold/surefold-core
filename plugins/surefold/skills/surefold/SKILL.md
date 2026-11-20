@@ -104,6 +104,7 @@ All on Maven Central as `dev.surefold:<module>`, on one version.
 - `surefold`: forks, resources, `Schedule`, `timeout`, `policy`, `Clock`, `TestClock`, logs and metrics, `capturingLogs`, `capturingMetrics`, `logger.unbound()` for what `main` reads.
 - `surefold-replay`: `explore` and `replay`, a test's forks in seeded orders.
 - `surefold-compiler`: a checker for forks that outlive their scope; plugin `dev.surefold.compiler`.
+- `surefold-arch-compiler`: a checker for a build's own dependency rules; a forbidden reference fails to compile.
 - `surefold-cache`: a cache with one lookup per key and stale values while the source fails.
 - `surefold-stream`: `Stream<E, A>`, described once and run on a backend.
 - `surefold-stream-forks`: the usual backend, a pull loop on a virtual thread.

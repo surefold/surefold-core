@@ -20,6 +20,8 @@ module("core", "surefold-test")
 
 module("core", "surefold-compiler")
 
+module("core", "surefold-arch-compiler")
+
 module("core", "surefold-replay")
 
 module("core", "surefold-assert")
