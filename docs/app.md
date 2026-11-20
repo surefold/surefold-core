@@ -418,6 +418,39 @@ because the plugin cannot see where that object came from. Calls into
 functions from other modules are trusted. One finding is silenced with
 `@Suppress("SUREFOLD_EFFECT_IN_TRANSACT")`.
 
+## Dependency rules in the compiler
+
+`dev.surefold.arch` applies `surefold-arch-compiler`, which makes a build's own
+dependency rules compile errors (spec 0315). It needs no surefold-app:
+
+```kotlin
+plugins { id("dev.surefold.arch") version "<version>" }
+
+surefoldArch {
+    baseline = file("gradle/arch-baseline.txt") // optional
+    rule("app-sql-import", "application code reaches the database through a store port") {
+        code("doorlist.app..") // where the rule applies; `..` is the package and below
+        mustNotUse("doorlist.store.adapters.sql..")
+    }
+    rule("app-logback", "only the JSON encoder binds the app to the logging backend") {
+        onlyIn("doorlist.app.observability") // a package or a top-level class
+        mayUse("ch.qos.logback..")
+        compilations("main", "test") // main alone unless a rule says otherwise
+    }
+}
+```
+
+A reference a rule forbids fails with `SUREFOLD_ARCH_FORBIDDEN`, which names the
+rule, its reason and the baseline line that would excuse it. The baseline is
+a checked-in file of `path rule-id` lines, paths relative to the project
+directory; a line whose file no longer breaks its rule fails as
+`SUREFOLD_ARCH_STALE`, so the file only shrinks.
+
+As with the graph checker, IntelliJ shows these errors as you type only once
+`kotlin.k2.only.bundled.compiler.plugins.enabled` is unchecked in its registry.
+The editor reads the rules and the baseline when Gradle syncs, so an edit to
+either shows there after a re-sync; the build sees it at once.
+
 ## Starting warm with an AOT cache
 
 A JVM starts cold: it loads and links every class the graph needs, then runs

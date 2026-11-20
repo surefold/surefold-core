@@ -83,6 +83,7 @@ against; the library's own transitive dependencies come with it.
 | `surefold` | forks, errors, resources, schedules, policies, context, logs, metrics, `await` on any future ([guide](core.md)) | none | nothing | yes |
 | `surefold-replay` | a test's forks in seeded orders: `explore` finds the one that breaks it, `replay` runs it again (spec 0042) | `surefold` | none | yes |
 | `surefold-compiler` | a K2 checker: a `Deferred`, `Channel` or `Scope` returned from a scope or kept in a property is an error (spec 0041); applied by `dev.surefold.compiler` | none | the Kotlin compiler, already present | yes |
+| `surefold-arch-compiler` | a K2 checker for a build's own dependency rules: a reference a rule forbids is an error (spec 0315); applied by `dev.surefold.arch` ([guide](app.md#dependency-rules-in-the-compiler)) | none | the Kotlin compiler, already present | yes |
 | `surefold-cache` | `Cache`: one lookup per key, a ttl by result, the last good value while the source fails (spec 0246) | `surefold` | none | yes |
 | `surefold-guides` | tests only: the guides' examples compiled against the core (spec 0302) | | | no |
 | `surefold-structured` | `parZip`, `parMap`, `raceN`, `timeout` on the JDK's `StructuredTaskScope` (preview in JDK 27) | `surefold` | none | no |
@@ -94,7 +95,7 @@ against; the library's own transitive dependencies come with it.
 |---|---|---|---|---|
 | `surefold-app` | an application as a checked dependency graph ([guide](app.md)) | `surefold` | none | yes |
 | `surefold-app-actor` | a `surefold-actor` scope and actors as nodes ([cookbook](cookbook.md#spawn-a-surefold-actor)) | `surefold-app`, `surefold-actor` | none | yes |
-| `surefold-app-gradle` | the Gradle plugins `dev.surefold.wiring` ([guide](app.md#checking-the-graph-in-the-build)) and `dev.surefold.compiler`, which applies `surefold-compiler` | none | Gradle API | yes |
+| `surefold-app-gradle` | the Gradle plugins `dev.surefold.wiring` ([guide](app.md#checking-the-graph-in-the-build)), `dev.surefold.compiler`, which applies `surefold-compiler`, and `dev.surefold.arch`, which applies `surefold-arch-compiler` | none | Gradle API | yes |
 | `surefold-app-compiler` | the K2 compiler checker the plugin applies ([guide](app.md#checking-the-graph-in-the-editor)) | none | the Kotlin compiler, already present | yes |
 
 ### Streams
