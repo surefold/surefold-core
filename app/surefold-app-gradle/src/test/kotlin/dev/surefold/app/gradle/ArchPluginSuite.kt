@@ -75,6 +75,16 @@ object ArchPluginSuite : Suite(concurrent = false) {
             }
         }
 
+        test("a '|' in a rule's reason fails configuration, naming the rule") {
+            withTempDirectory { dir ->
+                archProject(dir, rule = """rule("pipes", "ports | adapters") { code("a.."); mustNotUse("b..") }""")
+
+                val result = archRunner(dir, "classes").buildAndFail()
+
+                result.output shouldContain "surefoldArch rule \"pipes\": '|' separates the compiler's fields"
+            }
+        }
+
         test("editing only the baseline compiles again, and reports a stale entry in a file that did not change") {
             withTempDirectory { dir ->
                 archProject(dir, rule = "$FORBID_B\n    baseline = file(\"arch-baseline.txt\")")
