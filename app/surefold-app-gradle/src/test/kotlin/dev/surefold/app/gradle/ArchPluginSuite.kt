@@ -64,6 +64,17 @@ object ArchPluginSuite : Suite(concurrent = false) {
             }
         }
 
+        test("a comma in a rule's reason fails configuration, naming the rule") {
+            withTempDirectory { dir ->
+                archProject(dir, rule = """rule("commas", "through ports, not b") { code("a.."); mustNotUse("b..") }""")
+
+                val result = archRunner(dir, "classes").buildAndFail()
+
+                result.output shouldContain
+                    "surefoldArch rule \"commas\": Kotlin's Gradle plugin joins compiler options with ','"
+            }
+        }
+
         test("editing only the baseline compiles again, and reports a stale entry in a file that did not change") {
             withTempDirectory { dir ->
                 archProject(dir, rule = "$FORBID_B\n    baseline = file(\"arch-baseline.txt\")")
