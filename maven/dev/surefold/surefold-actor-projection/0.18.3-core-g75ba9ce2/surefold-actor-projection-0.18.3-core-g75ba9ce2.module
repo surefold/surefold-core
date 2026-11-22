@@ -1,0 +1,130 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-actor-projection",
+    "version": "0.18.3-core-g75ba9ce2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "dev.surefold",
+          "module": "surefold-stream",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-projection-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-actor-projection-0.18.3-core-g75ba9ce2.jar",
+          "size": 15160,
+          "sha512": "49e7518560739e49e0a9e2b292195f9a763da2c2890f2b7803e0d01e1cc6fbb7604c4bf11c8105793e4016f6c6d0ac60a4d7b45defbf2adb6eeca09ec54d7cc4",
+          "sha256": "00c5e9648b1a25869860743dde995026f50bb362c8f7e4f4d5bea2e52bb154b9",
+          "sha1": "b41ba5f460921f48cec5e1b2d594247acdc699df",
+          "md5": "9b12b00208a5a12fff7083c1abd6efd0"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "dev.surefold",
+          "module": "surefold-stream",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-projection-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-actor-projection-0.18.3-core-g75ba9ce2.jar",
+          "size": 15160,
+          "sha512": "49e7518560739e49e0a9e2b292195f9a763da2c2890f2b7803e0d01e1cc6fbb7604c4bf11c8105793e4016f6c6d0ac60a4d7b45defbf2adb6eeca09ec54d7cc4",
+          "sha256": "00c5e9648b1a25869860743dde995026f50bb362c8f7e4f4d5bea2e52bb154b9",
+          "sha1": "b41ba5f460921f48cec5e1b2d594247acdc699df",
+          "md5": "9b12b00208a5a12fff7083c1abd6efd0"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-actor-projection-0.18.3-core-g75ba9ce2-sources.jar",
+          "url": "surefold-actor-projection-0.18.3-core-g75ba9ce2-sources.jar",
+          "size": 3597,
+          "sha512": "9be808deddc3795585044169a1296934fe1d818ac5f3153d09d94d18e112ce2708ba84b33883ca223d0aa653eb1ded48dbdd21614df1bcda2dd5bb2cf8252788",
+          "sha256": "be900c7f8d267742da285d6f2cf499184759fab4396ed1b996bd82fbb664b71f",
+          "sha1": "3dbc5c741a1d8ea9bec7d41ec5cca1efe954310b",
+          "md5": "ce0c518947725d8713b3e9bfcad0260a"
+        }
+      ]
+    }
+  ]
+}

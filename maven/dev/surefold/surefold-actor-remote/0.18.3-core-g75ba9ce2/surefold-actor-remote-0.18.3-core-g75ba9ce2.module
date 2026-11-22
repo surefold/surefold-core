@@ -1,0 +1,231 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-actor-remote",
+    "version": "0.18.3-core-g75ba9ce2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-remote-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-actor-remote-0.18.3-core-g75ba9ce2.jar",
+          "size": 105880,
+          "sha512": "6d2b363e19f06d3d1c07ab2a5857814ca007b217ad19799132fd78956392a4b072ef36aeca8f914e6e0fbc9fedac3e8a4e42a2fa3a07970b92f354d2cc84d785",
+          "sha256": "3315591e9c82f9cfc70446d51f2c363af720eab8fe0297afb2874d7f4f9b6eb5",
+          "sha1": "4f368d6c3988cf6c1a51f4324141cda71ec58a02",
+          "md5": "4e896a874e762cee0256dfe721f72e02"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-remote-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-actor-remote-0.18.3-core-g75ba9ce2.jar",
+          "size": 105880,
+          "sha512": "6d2b363e19f06d3d1c07ab2a5857814ca007b217ad19799132fd78956392a4b072ef36aeca8f914e6e0fbc9fedac3e8a4e42a2fa3a07970b92f354d2cc84d785",
+          "sha256": "3315591e9c82f9cfc70446d51f2c363af720eab8fe0297afb2874d7f4f9b6eb5",
+          "sha1": "4f368d6c3988cf6c1a51f4324141cda71ec58a02",
+          "md5": "4e896a874e762cee0256dfe721f72e02"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-actor-remote-0.18.3-core-g75ba9ce2-sources.jar",
+          "url": "surefold-actor-remote-0.18.3-core-g75ba9ce2-sources.jar",
+          "size": 18318,
+          "sha512": "752bc4a3dfea6af4726a44ef32d640aa6f517a3286570947c052592db98b762e887f6f21b2a9e8532fe5e7d15c4e0e6438fb5a7051660b716f1dbb8b074fa5fe",
+          "sha256": "b8d8dadfa1e082c6efb96ee67bc9ee9cc9fbb1dcd8afef6510c4d0b2f92aaf8e",
+          "sha1": "c700d8b3952a0bc8de5eac338f346a4073175643",
+          "md5": "c920eb2e9c24d84584de8698781c489e"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor-remote",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-remote-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "url": "surefold-actor-remote-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "size": 15001,
+          "sha512": "7b328702939b4d5593b3d6ef3cbbba8abba0ddc7315123ad168649037a79ecadd7241c67fb75d969f00c4a39aa490653810f0b0e2474f518fd9fd612a029951a",
+          "sha256": "fe0f8768984d2c2b0da20c5a169b4720ae5c5e7b99b546b8e3720f0f2f81e0c3",
+          "sha1": "a0abd18945145876af11f838379f40ffd7025453",
+          "md5": "e5c02b3ec86c1a8e27cf204e6c337083"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-remote-test-fixtures",
+          "version": "0.18.3-core-g75ba9ce2"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesRuntimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor-remote",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-remote-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "url": "surefold-actor-remote-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "size": 15001,
+          "sha512": "7b328702939b4d5593b3d6ef3cbbba8abba0ddc7315123ad168649037a79ecadd7241c67fb75d969f00c4a39aa490653810f0b0e2474f518fd9fd612a029951a",
+          "sha256": "fe0f8768984d2c2b0da20c5a169b4720ae5c5e7b99b546b8e3720f0f2f81e0c3",
+          "sha1": "a0abd18945145876af11f838379f40ffd7025453",
+          "md5": "e5c02b3ec86c1a8e27cf204e6c337083"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-remote-test-fixtures",
+          "version": "0.18.3-core-g75ba9ce2"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-actor-remote-0.18.3-core-g75ba9ce2-test-fixtures-sources.jar",
+          "url": "surefold-actor-remote-0.18.3-core-g75ba9ce2-test-fixtures-sources.jar",
+          "size": 12676,
+          "sha512": "b9e0abe6505aa02d5eedfba335d761f6236ee586226a9c475a8dcaa37529dd0924e18a0dc65061403fcf60c6367220b2613814f53db0548fd6bf30a08f77c7ed",
+          "sha256": "aea158166675a9401636fe74a74baf2b0ebababc27300700d3136e1b9934259e",
+          "sha1": "78cea7053dcd3a4bfbea5c3d03c45070d198ad80",
+          "md5": "702c5ad5d21eb992de4b901b467c6a31"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-remote-test-fixtures",
+          "version": "0.18.3-core-g75ba9ce2"
+        }
+      ]
+    }
+  ]
+}

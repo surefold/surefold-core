@@ -1,0 +1,130 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-app-actor",
+    "version": "0.18.3-core-g75ba9ce2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-app",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-app-actor-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-app-actor-0.18.3-core-g75ba9ce2.jar",
+          "size": 21605,
+          "sha512": "44671b38799ccf970924ce2825c0b24329741a29649732d2c99253b498225aa5846763ad5083b1c969520970640b4c841df159555abd8afae168692d796a3762",
+          "sha256": "0cf1217dafd1a1bf5e8280766533a96b6e33c4924e1f8b884ec1cac29ce63501",
+          "sha1": "fd5671b1b2848c38b79d2f0bd39026f2e15a345b",
+          "md5": "ecd87937a7088147a3bc142c8eeb748a"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-app",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-app-actor-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-app-actor-0.18.3-core-g75ba9ce2.jar",
+          "size": 21605,
+          "sha512": "44671b38799ccf970924ce2825c0b24329741a29649732d2c99253b498225aa5846763ad5083b1c969520970640b4c841df159555abd8afae168692d796a3762",
+          "sha256": "0cf1217dafd1a1bf5e8280766533a96b6e33c4924e1f8b884ec1cac29ce63501",
+          "sha1": "fd5671b1b2848c38b79d2f0bd39026f2e15a345b",
+          "md5": "ecd87937a7088147a3bc142c8eeb748a"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-app-actor-0.18.3-core-g75ba9ce2-sources.jar",
+          "url": "surefold-app-actor-0.18.3-core-g75ba9ce2-sources.jar",
+          "size": 3373,
+          "sha512": "067c85b6e64f50e119dc9f60aff8d75aed55114094df8c40bc22fef16f2f25195ca896e391893377960a48dc2fefc157c4de0bf473b9eef0ab965de89af7298e",
+          "sha256": "c8f974fac371a73d7dfb8471de133706ee02dcbde52b96ccd812bb2b70692652",
+          "sha1": "b291bd9de538fa2cbfb175015bb5c5738b522172",
+          "md5": "55fc490b0f308a4d6a554a0962388987"
+        }
+      ]
+    }
+  ]
+}

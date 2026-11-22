@@ -1,0 +1,252 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-actor",
+    "version": "0.18.3-core-g75ba9ce2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-actor-0.18.3-core-g75ba9ce2.jar",
+          "size": 445151,
+          "sha512": "7137d7357b16551a75647c8fa7f0923f4a63681f66a78bab474df88a66c089881c94bdef246052e6437e24007820c6f2997d9e6c7d473ab689fafa3d546df1de",
+          "sha256": "4411ecb0f569cbdfbcb60c91a9dc0086386c86849c7a871436487cb9865a90e9",
+          "sha1": "e65da3cc2d18f0de183179d1bd34abf463a937ca",
+          "md5": "f2d572797d977deb074a2bcfcac955a8"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-0.18.3-core-g75ba9ce2.jar",
+          "url": "surefold-actor-0.18.3-core-g75ba9ce2.jar",
+          "size": 445151,
+          "sha512": "7137d7357b16551a75647c8fa7f0923f4a63681f66a78bab474df88a66c089881c94bdef246052e6437e24007820c6f2997d9e6c7d473ab689fafa3d546df1de",
+          "sha256": "4411ecb0f569cbdfbcb60c91a9dc0086386c86849c7a871436487cb9865a90e9",
+          "sha1": "e65da3cc2d18f0de183179d1bd34abf463a937ca",
+          "md5": "f2d572797d977deb074a2bcfcac955a8"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-actor-0.18.3-core-g75ba9ce2-sources.jar",
+          "url": "surefold-actor-0.18.3-core-g75ba9ce2-sources.jar",
+          "size": 79716,
+          "sha512": "6d83c24cf0074bae37690ddb6e581e9e1b3ffd963cbdf555e785be3d64900c8c03e56a1fe570b7b8d61538d4f3447c37643a6f402786aaf88ce90f6570c35a71",
+          "sha256": "e06f6a81df6840652dc84870ab83cf81bf824243d1153aabb2ffc2550e4f1d57",
+          "sha1": "99b7c8e1f9c345931301675e64361b142d4a89fa",
+          "md5": "7043cae1d8c05068db954d001a6f0ef0"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.junit.jupiter",
+          "module": "junit-jupiter-api",
+          "version": {
+            "requires": "6.1.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "url": "surefold-actor-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "size": 28426,
+          "sha512": "a786a31b0812fd6a47a8e1364ed4e4fe1b9218686e26327d30ff91c30941bbee0cb2751b9b3908cb1b67e70c80ab70b98c224d246a5496052ac98fd7bbd71517",
+          "sha256": "75da733b2b0499c9b03cc2d5bf87d722298d15f38b306b7e72c4a75094a2851f",
+          "sha1": "46f67cab4cdffe11f758247b688d4c2bc1e8a131",
+          "md5": "cb62462898bb6b71c77830c0f81cf824"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-test-fixtures",
+          "version": "0.18.3-core-g75ba9ce2"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesRuntimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-assert",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g75ba9ce2"
+          }
+        },
+        {
+          "group": "org.junit.jupiter",
+          "module": "junit-jupiter-api",
+          "version": {
+            "requires": "6.1.3"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "url": "surefold-actor-0.18.3-core-g75ba9ce2-test-fixtures.jar",
+          "size": 28426,
+          "sha512": "a786a31b0812fd6a47a8e1364ed4e4fe1b9218686e26327d30ff91c30941bbee0cb2751b9b3908cb1b67e70c80ab70b98c224d246a5496052ac98fd7bbd71517",
+          "sha256": "75da733b2b0499c9b03cc2d5bf87d722298d15f38b306b7e72c4a75094a2851f",
+          "sha1": "46f67cab4cdffe11f758247b688d4c2bc1e8a131",
+          "md5": "cb62462898bb6b71c77830c0f81cf824"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-test-fixtures",
+          "version": "0.18.3-core-g75ba9ce2"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-actor-0.18.3-core-g75ba9ce2-test-fixtures-sources.jar",
+          "url": "surefold-actor-0.18.3-core-g75ba9ce2-test-fixtures-sources.jar",
+          "size": 6467,
+          "sha512": "eb09b27d406c4292dc83e9c8d2ccf14e7264ab4c4fa558f0c18f305700925243239fc7e45531b76fb7059d17e84356fe5c1610d3d402d1fb71a916dafb7e4ccc",
+          "sha256": "99df54601e3c6f313c4e2dc1f02a0367f33d518e4feaaf8e23bd94fcec878349",
+          "sha1": "a126a4ce8f1b4abab78f6bae8df5fb0667bd674b",
+          "md5": "57b914cb5feb3fb5e4726fa5d2d41f9b"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-test-fixtures",
+          "version": "0.18.3-core-g75ba9ce2"
+        }
+      ]
+    }
+  ]
+}
