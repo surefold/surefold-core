@@ -446,6 +446,10 @@ a checked-in file of `path rule-id` lines, paths relative to the project
 directory; a line whose file no longer breaks its rule fails as
 `SUREFOLD_ARCH_STALE`, so the file only shrinks.
 
+No part of a rule, its reason included, may contain `,` or `|`: each rule
+reaches the compiler as one option, so either fails configuration, naming the
+rule.
+
 As with the graph checker, IntelliJ shows these errors as you type only once
 `kotlin.k2.only.bundled.compiler.plugins.enabled` is unchecked in its registry.
 The editor reads the rules and the baseline when Gradle syncs, so an edit to

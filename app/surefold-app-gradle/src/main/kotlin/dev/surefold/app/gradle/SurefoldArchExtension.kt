@@ -69,13 +69,15 @@ class ArchRule internal constructor(internal val id: String, private val reason:
                         "surefoldArch rule \"$id\" needs code(..) with mustNotUse(..), or onlyIn(..) with mayUse(..)",
                     )
             }
-        listOf(id, from, to)
-            .firstOrNull { '|' in it.orEmpty() }
-            ?.let {
-                throw GradleException(
-                    "surefoldArch rule \"$id\": '|' separates the compiler's fields, so \"$it\" cannot",
-                )
-            }
+        for (field in listOf(id, from, to, reason).map { it.orEmpty() }) {
+            val why =
+                when {
+                    '|' in field -> "'|' separates the compiler's fields"
+                    ',' in field -> "Kotlin's Gradle plugin joins compiler options with ','"
+                    else -> continue
+                }
+            throw GradleException("surefoldArch rule \"$id\": $why, so \"$field\" cannot")
+        }
         return "$id|$kind|$from|$to|$reason"
     }
 }
