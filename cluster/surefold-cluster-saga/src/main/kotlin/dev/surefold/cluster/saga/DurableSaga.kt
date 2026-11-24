@@ -46,6 +46,9 @@ internal constructor(
 
         /** The journal holds nothing of it: never started, or pruned. */
         data object Forgotten : Outcome<Nothing, Nothing>
+
+        /** Called off by `cancel`, its ended steps undone (spec 0317). */
+        data class Cancelled(val reason: String) : Outcome<Nothing, Nothing>
     }
 }
 
@@ -117,6 +120,9 @@ class Stuck(val saga: String, val step: String, cause: Throwable) :
 class Waiting(val saga: String, val until: Instant) :
     IllegalStateException("saga $saga is waiting for a signal until $until")
 
+/** The saga was called off by `cancel` for [reason], and every step that ended was undone. */
+class CalledOff(val saga: String, val reason: String) : IllegalStateException("saga $saga was called off: $reason")
+
 /** Another runner wrote to this saga's journal meanwhile: this one stops rather than write a second history. */
 class Overtaken(val saga: String) : IllegalStateException("saga $saga was written by another runner")
 
@@ -146,7 +152,7 @@ internal fun <I, E, A> Durable<I, E, A>.drive(
     val begun = log.started() ?: input?.also { starting() }?.let(log::start) ?: return null
     started()
     log.ending()?.let {
-        return it.decoded(this)
+        return it.decoded(this, id)
     }
     return ran(log, id, begun)
 }
@@ -172,6 +178,8 @@ internal fun <I, E, A> Durable<I, E, A>.ending(
         null
     } catch (waiting: Waiting) {
         Ending.Parked(waiting.until)
+    } catch (off: CalledOff) {
+        Ending.Cancelled(off.reason)
     } catch (stopped: Exception) {
         Ending.Stuck(stopped.nonFatalOrThrow().message ?: stopped.toString())
     }
@@ -183,21 +191,39 @@ internal fun Durable<*, *, *>.standing(journal: Journal, id: String): Ending? {
     return when (val ended = log.ending()) {
         is Record.Finished -> Ending.Done(ended.bytes)
         is Record.Refused -> Ending.Refused(ended.bytes)
+        is Record.Cancelled -> Ending.Cancelled(ended.reason)
         else -> null
     }
 }
 
 private fun <I, E, A> Durable<I, E, A>.ran(log: Log, id: String, begun: ByteArray): Either<E, A> {
     val replay = Replay(this, id, log)
-    val answer = attempt<E, A> { replay.scoped(this).body(input.decode(begun)) }
+    val answer =
+        try {
+            attempt<E, A> { replay.scoped(this).body(input.decode(begun)) }
+        } catch (off: CallOff) {
+            calledOff(log, replay, id, off.reason)
+        }
     answer.fold({ refused -> undoAll(log, replay, refused) }, { log.append(Record.Finished(this.answer.encode(it))) })
     return answer
 }
 
-/** Each step's undo, newest first, each journalled once it ends; a resume skips the ones already undone. */
 private fun <I, E, A> Durable<I, E, A>.undoAll(log: Log, replay: Replay<E>, refused: E) {
     if (!log.undoing()) log.append(Record.Undoing(error.encode(refused)))
-    val why = Undo.Failed(refused)
+    undoSteps(log, replay, Undo.Failed(refused))
+    log.append(Record.Refused(error.encode(refused)))
+}
+
+/** Undoes every step that ended, told it was cancelled for [reason], and ends the saga [Record.Cancelled]. */
+private fun <E> Durable<*, E, *>.calledOff(log: Log, replay: Replay<E>, id: String, reason: String): Nothing {
+    undoSteps(log, replay, Undo.Cancelled(InterruptedException(reason)))
+    log.append(Record.Cancelled(reason))
+    counter("surefold.saga.cancelled", "saga" to kind).increment(1.0)
+    throw CalledOff(id, reason)
+}
+
+/** Each step's undo, newest first, each journalled once it ends; a resume skips the ones already undone. */
+private fun <E> Durable<*, E, *>.undoSteps(log: Log, replay: Replay<E>, why: Undo<E>) {
     replay.done
         .asReversed()
         .filterNot { it.name in log.undone() }
@@ -209,18 +235,18 @@ private fun <I, E, A> Durable<I, E, A>.undoAll(log: Log, replay: Replay<E>, refu
             }
             log.append(Record.Undone(step.name))
         }
-    log.append(Record.Refused(error.encode(refused)))
 }
 
-private fun <I, E, A> Durable<I, E, A>.stuck(step: String, failed: Throwable): Nothing {
+private fun Durable<*, *, *>.stuck(step: String, failed: Throwable): Nothing {
     counter("surefold.saga.stuck", "saga" to kind).increment(1.0)
     throw Stuck(kind, step, failed)
 }
 
-private fun <I, E, A> Record.decoded(saga: Durable<I, E, A>): Either<E, A> =
+private fun <I, E, A> Record.decoded(saga: Durable<I, E, A>, id: String): Either<E, A> =
     when (this) {
         is Record.Finished -> Either.Right(saga.answer.decode(bytes))
         is Record.Refused -> Either.Left(saga.error.decode(bytes))
+        is Record.Cancelled -> throw CalledOff(id, reason)
         else -> error("$this does not end a saga")
     }
 
@@ -294,6 +320,7 @@ private class Replay<E>(private val saga: Durable<*, E, *>, override val id: Str
     }
 
     private fun <B> fresh(name: String, codec: StateCodec<B>, action: () -> B): B {
+        unlessCalledOff()
         log.append(Record.Begun(name))
         return action().also { log.append(Record.Ended(name, codec.encode(it))) }
     }
@@ -317,6 +344,7 @@ private class Replay<E>(private val saga: Durable<*, E, *>, override val id: Str
                 is Record.Ended -> kept.named(name).bytes
 
                 null -> {
+                    unlessCalledOff()
                     val next = log.signals().filter { it.name == signal.name }.getOrNull(took[signal.name] ?: 0)
                     when {
                         next != null -> byteArrayOf(TOOK) + next.value
@@ -337,10 +365,20 @@ private class Replay<E>(private val saga: Durable<*, E, *>, override val id: Str
     // A time or an id can't be unknown, so it is journalled once, as an end with no beginning.
     private fun taken(name: String, make: () -> String): String =
         when (val kept = log.next()) {
-            null -> make().also { log.append(Record.Ended(name, it.toByteArray())) }
+            null -> {
+                unlessCalledOff()
+                make().also { log.append(Record.Ended(name, it.toByteArray())) }
+            }
             is Record.Ended -> String(kept.named(name).bytes)
             else -> throw Diverged(id, "$kept", name)
         }
+
+    /** At a position the journal does not hold yet: a cancel in the inbox is journalled here, and nothing more runs. */
+    private fun unlessCalledOff() {
+        val reason = log.cancel() ?: return
+        log.append(Record.Cancelling(reason))
+        throw CallOff(reason)
+    }
 
     private fun <R : Record.Named> R.named(name: String): R = also {
         if (this.name != name) throw Diverged(id, this.name, name)
@@ -353,13 +391,22 @@ private class Log(private val journal: Journal, private val id: PersistenceId) {
     private var sequence = records.size.toLong()
     private var at = 1
 
-    fun ending(): Record? = records.lastOrNull()?.takeIf { it is Record.Finished || it is Record.Refused }
+    fun ending(): Record? =
+        records.lastOrNull()?.takeIf { it is Record.Finished || it is Record.Refused || it is Record.Cancelled }
 
     fun started(): ByteArray? = (records.firstOrNull() as? Record.Started)?.input
 
     fun start(input: ByteArray): ByteArray = input.also { append(Record.Started(input)) }
 
-    fun next(): Record? = records.getOrNull(at)?.takeUnless { it is Record.Undone }?.also { at++ }
+    /** The record at the cursor, moving past it; a journalled cancel there stops the body as it did the first time. */
+    fun next(): Record? =
+        records
+            .getOrNull(at)
+            ?.takeUnless { it is Record.Undone }
+            ?.also { at++ }
+            ?.also { if (it is Record.Cancelling) throw CallOff(it.reason) }
+
+    fun cancel(): String? = signals().firstOrNull { it.name == CANCEL }?.let { String(it.value) }
 
     fun signals(): List<InboxRecord> = journal.read(inboxOf(id.kind, id.id)).map { InboxRecord.read(it.bytes) }
 
@@ -396,6 +443,10 @@ private sealed interface Record {
 
     class Undone(val name: String) : Record
 
+    class Cancelling(val reason: String) : Record
+
+    class Cancelled(val reason: String) : Record
+
     fun bytes(): ByteArray {
         val out = ByteArrayOutputStream()
         DataOutputStream(out).use { data ->
@@ -416,6 +467,10 @@ private sealed interface Record {
                 is Undoing -> data.tagged(UNDOING, bytes)
 
                 is Undone -> data.tagged(UNDONE, name.toByteArray())
+
+                is Cancelling -> data.tagged(CANCELLING, reason.toByteArray())
+
+                is Cancelled -> data.tagged(CANCELLED, reason.toByteArray())
             }
         }
         return out.toByteArray()
@@ -429,6 +484,8 @@ private sealed interface Record {
         const val REFUSED = 5
         const val UNDOING = 6
         const val UNDONE = 7
+        const val CANCELLING = 8
+        const val CANCELLED = 9
 
         private fun DataOutputStream.tagged(tag: Int, sized: ByteArray) {
             writeByte(tag)
@@ -448,11 +505,16 @@ private sealed interface Record {
                 REFUSED -> Refused(first)
                 UNDOING -> Undoing(first)
                 UNDONE -> Undone(String(first))
+                CANCELLING -> Cancelling(String(first))
+                CANCELLED -> Cancelled(String(first))
                 else -> error("no saga record has the tag $tag")
             }
         }
     }
 }
+
+/** A cancel seen by the body: it unwinds to the runner, which undoes what ended. Never a declared fail. */
+private class CallOff(val reason: String) : RuntimeException(reason, null, false, false)
 
 /** The first byte of what a `receive` journals: a signal was taken, or the deadline passed first. */
 private const val TOOK: Byte = 1

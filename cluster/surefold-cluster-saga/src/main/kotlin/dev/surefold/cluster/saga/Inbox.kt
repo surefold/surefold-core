@@ -10,7 +10,24 @@ import java.io.DataInputStream
 import java.io.DataOutputStream
 
 /** A message, named [name], that a durable saga's body waits for (spec 0316). */
-open class SagaSignal<T>(val name: String, val codec: StateCodec<T>)
+open class SagaSignal<T>(val name: String, val codec: StateCodec<T>) {
+    init {
+        require(!name.startsWith(RESERVED)) { "$name: a signal's name may not start with $RESERVED" }
+    }
+}
+
+/** Names Surefold keeps for itself in a saga's inbox. */
+private const val RESERVED = "surefold:"
+
+/** The name a cancel is kept under in a saga's inbox (spec 0317). */
+internal const val CANCEL = "${RESERVED}cancel"
+
+/**
+ * Calls off the saga [id] on [journal] for [reason]: kept in its inbox while it has started and not ended, and seen by
+ * its body at its next step, `receive`, `now()` or `uuid()`. A second cancel with the same [dedupe] is kept once.
+ */
+fun <I, E, A> Durable<I, E, A>.cancel(journal: Journal, id: String, reason: String, dedupe: String): Delivered<E, A> =
+    delivering(journal, id, InboxRecord(CANCEL, dedupe, reason.toByteArray())).delivered(this)
 
 /** What became of a signal sent to a saga. */
 sealed interface Delivered<out E, out A> {
@@ -56,6 +73,7 @@ internal fun <E, A> Ending.delivered(saga: Durable<*, E, A>): Delivered<E, A> =
         is Ending.Done -> Delivered.Ended(Durable.Outcome.Done(saga.answer.decode(bytes)))
         is Ending.Refused -> Delivered.Ended(Durable.Outcome.Refused(saga.error.decode(bytes)))
         Ending.Forgotten -> Delivered.Unknown
+        is Ending.Cancelled -> Delivered.Ended(Durable.Outcome.Cancelled(reason))
         Ending.Running,
         is Ending.Stuck,
         is Ending.Parked -> Delivered.Accepted
