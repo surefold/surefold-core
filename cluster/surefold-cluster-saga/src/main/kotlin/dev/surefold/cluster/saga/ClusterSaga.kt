@@ -58,11 +58,23 @@ internal constructor(
         dedupe: String,
         within: Duration = 10.seconds,
     ): Either<AskFailure, Delivered<E, A>> =
+        delivering(id, InboxRecord(signal.name, dedupe, signal.codec.encode(value)), within)
+
+    /**
+     * Calls off the saga [id] for [reason]: kept while it has started and not ended, waking it if it waits, and seen by
+     * its body at its next boundary (spec 0317). A second cancel with the same [dedupe] is kept once.
+     */
+    fun cancel(
+        id: String,
+        reason: String,
+        dedupe: String,
+        within: Duration = 10.seconds,
+    ): Either<AskFailure, Delivered<E, A>> = delivering(id, InboxRecord(CANCEL, dedupe, reason.toByteArray()), within)
+
+    private fun delivering(id: String, record: InboxRecord, within: Duration): Either<AskFailure, Delivered<E, A>> =
         sharded
             .entity(id)
-            .ask<SagaCommand, Ending>(within) {
-                SagaCommand.Signal(InboxRecord(signal.name, dedupe, signal.codec.encode(value)), it)
-            }
+            .ask<SagaCommand, Ending>(within) { SagaCommand.Signal(record, it) }
             .map { it.delivered(saga) }
 }
 
