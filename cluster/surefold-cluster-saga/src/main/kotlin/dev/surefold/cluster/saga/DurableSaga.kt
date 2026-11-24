@@ -163,6 +163,15 @@ internal fun <I, E, A> Durable<I, E, A>.ending(
         Ending.Stuck(stopped.nonFatalOrThrow().message ?: stopped.toString())
     }
 
+/** [Delivered.Unknown] for a saga never started, [Delivered.Ended] for one that ended; null while it may still run. */
+internal fun <I, E, A> Durable<I, E, A>.standing(journal: Journal, id: String): Delivered<E, A>? {
+    val log = Log(journal, PersistenceId(kind, id))
+    if (log.started() == null) return Delivered.Unknown
+    return log.ending()
+        ?.decoded(this)
+        ?.fold({ Delivered.Ended(Durable.Outcome.Refused(it)) }, { Delivered.Ended(Durable.Outcome.Done(it)) })
+}
+
 private fun <I, E, A> Durable<I, E, A>.ran(log: Log, id: String, begun: ByteArray): Either<E, A> {
     val replay = Replay(this, id, log)
     val answer = attempt<E, A> { replay.scoped(this).body(input.decode(begun)) }
