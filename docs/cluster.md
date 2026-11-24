@@ -883,6 +883,96 @@ fun Sagas<Move, String, String>.pay(id: String, move: Move): Durable.Outcome<Str
 - **`now()` and `uuid()`** in a body are journalled, so a replay sees the same time and the same id. `on` reads the
   clock and metrics where it is called, so call it on the node's scope, as `cluster` and `sharding` are.
 
+### A saga that waits for an answer
+
+A payout held until someone approves it waits days in the middle of one body (spec 0316). `receive` takes the next
+signal of a name, or answers `null` once its deadline has passed, and the body decides what that means: here, a
+reminder and three more days, then the hold is undone.
+
+<!-- cluster-saga-answer -->
+```kotlin
+import dev.surefold.Settled
+import dev.surefold.actor.StateCodec
+import dev.surefold.cluster.Cluster
+import dev.surefold.cluster.saga.Delivered
+import dev.surefold.cluster.saga.SagaSignal
+import dev.surefold.cluster.saga.Sagas
+import dev.surefold.cluster.saga.durableSaga
+import dev.surefold.cluster.saga.on
+import dev.surefold.fail.fold
+import kotlin.time.Duration.Companion.days
+
+data class Approval(val by: String, val approved: Boolean)
+
+object Approvals : StateCodec<Approval> {
+    override fun encode(state: Approval): ByteArray = "${state.by}|${state.approved}".toByteArray()
+
+    override fun decode(bytes: ByteArray): Approval =
+        String(bytes).split("|").let { (by, approved) -> Approval(by, approved.toBoolean()) }
+}
+
+object Text : StateCodec<String> {
+    override fun encode(state: String): ByteArray = state.toByteArray()
+
+    override fun decode(bytes: ByteArray): String = String(bytes)
+}
+
+object Approved : SagaSignal<Approval>("approved", Approvals)
+
+/** Holds, pays and releases money for a claim, once per key, and says what it did under a key. */
+interface Bank {
+    fun hold(key: String, claim: String): String
+
+    fun pay(key: String, hold: String): String
+
+    fun release(key: String, hold: String)
+
+    fun find(key: String): Settled<String>
+}
+
+fun interface Approvers {
+    fun remind(key: String, claim: String): String
+}
+
+/** Every node calls this on its own scope, with the same saga. */
+fun Cluster.payouts(bank: Bank, approvers: Approvers): Sagas<String, String, String> =
+    durableSaga("payout", Text, Text, Text) { claim ->
+        val hold =
+            step("hold", Text, { key -> bank.hold(key, claim) }, bank::find) { key, held, _ -> bank.release(key, held) }
+        var answer = receive(Approved, within = 3.days)
+        if (answer == null) {
+            step("remind", Text, { key -> approvers.remind(key, claim) })
+            answer = receive(Approved, within = 3.days) ?: fail("not approved")
+        }
+        if (!answer.approved) fail("rejected by ${answer.by}")
+        step("pay", Text, { key -> bank.pay(key, hold) }, bank::find)
+    }.on(this)
+
+/** What an approval page shows once someone clicks approve on [claim]'s ticket. */
+fun Sagas<String, String, String>.approve(claim: String, by: String, ticket: String): String =
+    signal(claim, Approved, Approval(by, approved = true), dedupe = ticket).fold({ "try again" }) { delivered ->
+        when (delivered) {
+            Delivered.Accepted -> "approved"
+            is Delivered.Ended -> "too late: ${delivered.outcome}"
+            Delivered.Unknown -> "no such claim"
+        }
+    }
+```
+
+- **A wait costs no thread.** A body with nothing to take parks: its run stops, its entity may passivate, and the
+  `surefold-sagas` singleton keeps the deadline and wakes the saga at it, on whichever node holds the singleton then.
+  A signal wakes it sooner. Either way the body replays to the `receive` it stopped at.
+- **The journal decides.** The deadline is journalled the first time the body asks, and so is what `receive` took, a
+  signal or the timeout, so a replay answers the same whatever has arrived since. With both there when it first asks,
+  the signal is taken.
+- **Signals keep their order.** Each `receive` takes the next signal of its name in the order the saga's inbox holds
+  them; one that timed out takes none. A signal sent before the body asks waits in the inbox, and one it never takes
+  is ignored once the saga ends.
+- **`signal` answers what became of the signal**: `Accepted` (kept for a saga that has not ended, stuck ones
+  included), `Ended` with how the saga ended, or `Unknown` for an id nobody started. A repeat with the same `dedupe`
+  is answered `Accepted` and kept once. `Accepted` says only that it was kept: a saga already undoing after its
+  timeout ignores it, so a page that needs the result follows with `await`.
+
 ## Stopping, watching and telling everyone
 
 ### Stopping

@@ -30,6 +30,7 @@ class GuideExampleTest {
                 "reliable-answers",
                 "keyed",
                 "saga",
+                "saga-answer",
                 "operating",
                 "topic",
             )
