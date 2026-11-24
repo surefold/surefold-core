@@ -63,7 +63,7 @@ per step and nothing is ever half done.
 - [x] **`spec-0317-cluster`** ([#1142](https://github.com/surefold/surefold-core/pull/1142)) — `Sagas.cancel` from any node, and `Cancelled` across the wire to `await`.
       Done when: a three-node test cancels a saga parked in `receive` from another node, and every node awaits it as
       `Cancelled` well before its deadline, with its hold undone.
-- [ ] **`spec-0317-docs`** — a withdrawn claim added to the `docs/cluster.md` approval section, with a compiled fence.
+- [x] **`spec-0317-docs`** ([#1143](https://github.com/surefold/surefold-core/pull/1143)) — a withdrawn claim added to the `docs/cluster.md` approval section, with a compiled fence.
       Done when: `GuideExampleTest` compiles it.
 
 ## Acceptance
