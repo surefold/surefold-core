@@ -106,6 +106,9 @@ private val APPROVE_WITHIN = 8.seconds
 private fun payout(bank: Ledger, node: String) =
     durableSaga("payout", Words, Words, Words) { claim ->
         bank.ran.update { it + node }
+        step("hold", Amount, { key -> bank.move(key, -100) }, { key -> bank.find(key) }) { key, _, _ ->
+            bank.move(key, 100)
+        }
         val by = receive(Approve, within = APPROVE_WITHIN) ?: fail("not approved")
         "paid $claim, approved by $by"
     }
@@ -312,6 +315,22 @@ object ClusterSagaSuite : Suite(concurrent = false) {
                 ending(second, "p", second.payouts) shouldBe paid
                 third.payouts.signal("p", Approve, "late", dedupe = "t-2") shouldBe Delivered.Ended(paid).right()
                 second.payouts.signal("never", Approve, "ops", dedupe = "t-3") shouldBe Delivered.Unknown.right()
+            }
+        }
+
+        test("a cancel sent from another node calls off a waiting saga, and every node awaits it as cancelled") {
+            val ledger = Ledger()
+            tellers(ledger, Gate(null)) { tellers ->
+                val (first, second, third) = tellers
+                first.payouts.start("p", "claim-81") shouldBe Unit.right()
+                eventually(30.seconds) { checkNotNull(ledger.ran.peek().firstOrNull()) { "not run yet" } }
+
+                third.payouts.cancel("p", "customer withdrew", dedupe = "ops-1") shouldBe Delivered.Accepted.right()
+
+                val cancelled = Durable.Outcome.Cancelled("customer withdrew")
+                tellers.forAll { ending(it, "p", it.payouts) shouldBe cancelled }
+                ledger.applied.peek() shouldBe mapOf("p/hold" to -100L, "p/hold/undo" to 100L)
+                second.payouts.cancel("p", "again", dedupe = "ops-2") shouldBe Delivered.Ended(cancelled).right()
             }
         }
     }
