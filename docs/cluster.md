@@ -895,12 +895,14 @@ import dev.surefold.Settled
 import dev.surefold.actor.StateCodec
 import dev.surefold.cluster.Cluster
 import dev.surefold.cluster.saga.Delivered
+import dev.surefold.cluster.saga.Durable
 import dev.surefold.cluster.saga.SagaSignal
 import dev.surefold.cluster.saga.Sagas
 import dev.surefold.cluster.saga.durableSaga
 import dev.surefold.cluster.saga.on
 import dev.surefold.fail.fold
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.seconds
 
 data class Approval(val by: String, val approved: Boolean)
 
@@ -957,6 +959,20 @@ fun Sagas<String, String, String>.approve(claim: String, by: String, ticket: Str
             Delivered.Unknown -> "no such claim"
         }
     }
+
+/** What a support page shows once the customer withdraws [claim]: the hold is released however long it waited. */
+fun Sagas<String, String, String>.withdraw(claim: String, ticket: String): String =
+    cancel(claim, reason = "customer withdrew", dedupe = ticket).fold({ "try again" }) { delivered ->
+        when (delivered) {
+            Delivered.Accepted ->
+                when (val outcome = await(claim, within = 10.seconds)) {
+                    is Durable.Outcome.Cancelled -> "withdrawn, hold released"
+                    else -> "could not withdraw: $outcome"
+                }
+            is Delivered.Ended -> "too late: ${delivered.outcome}"
+            Delivered.Unknown -> "no such claim"
+        }
+    }
 ```
 
 - **A wait costs no thread.** A body with nothing to take parks: its run stops, its entity may passivate, and the
@@ -972,6 +988,11 @@ fun Sagas<String, String, String>.approve(claim: String, by: String, ticket: Str
   included), `Ended` with how the saga ended, or `Unknown` for an id nobody started. A repeat with the same `dedupe`
   is answered `Accepted` and kept once. `Accepted` says only that it was kept: a saga already undoing after its
   timeout ignores it, so a page that needs the result follows with `await`.
+- **`cancel` calls a saga off** (spec 0317), answered as `signal` is. The cancel waits in the inbox, wakes a parked
+  saga, and is seen at the body's next `step`, `receive`, `now()` or `uuid()` not yet journalled: a step already
+  running finishes first. Every step that ended is undone, newest first, each told `Undo.Cancelled` with the reason,
+  and the saga ends `Durable.Outcome.Cancelled(reason)`, counted in `surefold.saga.cancelled`. A saga already undoing
+  a refusal ignores it and ends `Refused`; on one node, `run` and `resume` throw `CalledOff` for a called-off saga.
 
 ## Stopping, watching and telling everyone
 
