@@ -170,6 +170,8 @@ internal fun <I, E, A> Durable<I, E, A>.ending(
         }
     } catch (_: Overtaken) {
         null
+    } catch (waiting: Waiting) {
+        Ending.Parked(waiting.until)
     } catch (stopped: Exception) {
         Ending.Stuck(stopped.nonFatalOrThrow().message ?: stopped.toString())
     }

@@ -59,6 +59,9 @@ private class Ledger {
         return applied.peek().getValue(key)
     }
 
+    /** The node each run of a payout's body ran on, in order. */
+    val ran = Shared(emptyList<String>())
+
     fun find(key: String): Settled<Long> = applied.peek()[key]?.let { Settled.Happened(it) } ?: Settled.DidNot
 }
 
@@ -95,6 +98,18 @@ private fun transfer(bank: Ledger, gate: Gate, node: String) =
         "moved $credited"
     }
 
+private object Approve : SagaSignal<String>("approve", Words)
+
+/** How long a payout waits for its approval: long enough to kill the node it waits on first. */
+private val APPROVE_WITHIN = 8.seconds
+
+private fun payout(bank: Ledger, node: String) =
+    durableSaga("payout", Words, Words, Words) { claim ->
+        bank.ran.update { it + node }
+        val by = receive(Approve, within = APPROVE_WITHIN) ?: fail("not approved")
+        "paid $claim, approved by $by"
+    }
+
 private val calm = Gossiping(probeEvery = 500.milliseconds, ackWithin = 250.milliseconds, formAfter = 1.seconds)
 
 /** A node running the transfer saga, on a scope of its own, until [close]. */
@@ -108,7 +123,7 @@ private class Teller(
     time: Clock,
 ) : AutoCloseable {
     private val done = Promise<Nothing, Unit>()
-    private val opened = Promise<Throwable, Pair<Cluster, Sagas<Long, String, String>>>()
+    private val opened = Promise<Throwable, Opened>()
     private val running = surefoldFuture {
         opening(port, seeds, journal, bank, gate, time)
     }
@@ -121,16 +136,21 @@ private class Teller(
             val downing = Downing.keepMajority(stableAfter = 2.seconds)
             val cluster = cluster(node(name, port), seeds, calm, downing, leaveWithin = Duration.ZERO)
             // Only the sagas read [time]: gossip on a clock that never moves would never form the cluster.
-            opened.succeed(cluster to clock.locally(time) { transfer(bank, gate, name).on(cluster) })
+            clock.locally(time) {
+                opened.succeed(Opened(cluster, transfer(bank, gate, name).on(cluster), payout(bank, name).on(cluster)))
+            }
             done.await()
         }
     }
 
     val cluster: Cluster
-        get() = opened().first
+        get() = opened().cluster
 
     val sagas: Sagas<Long, String, String>
-        get() = opened().second
+        get() = opened().transfers
+
+    val payouts: Sagas<String, String, String>
+        get() = opened().payouts
 
     private fun opened() = opened.await().fold({ throw IllegalStateException("$name did not open", it) }, { it })
 
@@ -140,6 +160,12 @@ private class Teller(
         running.join()
     }
 }
+
+private class Opened(
+    val cluster: Cluster,
+    val transfers: Sagas<Long, String, String>,
+    val payouts: Sagas<String, String, String>,
+)
 
 /** Three tellers on one shared journal and bank, all `Up`, handed to [test] and closed after it. */
 private fun tellers(bank: Ledger, gate: Gate, time: Clock = clock.get(), test: (List<Teller>) -> Unit) {
@@ -161,9 +187,13 @@ private fun tellers(bank: Ledger, gate: Gate, time: Clock = clock.get(), test: (
 }
 
 /** What [id] ends as, asked of [teller] until it is no longer running. */
-private fun ending(teller: Teller, id: String): Durable.Outcome<String, String> =
+private fun ending(
+    teller: Teller,
+    id: String,
+    sagas: Sagas<*, String, String> = teller.sagas,
+): Durable.Outcome<String, String> =
     eventually(45.seconds) {
-        teller.sagas.await(id, within = 2.seconds).also {
+        sagas.await(id, within = 2.seconds).also {
             check(it != Durable.Outcome.Running) { "$id is still running" }
         }
     }
@@ -247,6 +277,23 @@ object ClusterSagaSuite : Suite(concurrent = false) {
                 survivors.forAll { survivor ->
                     withClue("asked of ${survivor.name}, after ${killed.single().name} was killed") {
                         ending(survivor, "t") shouldBe gap.outcome
+                    }
+                }
+            }
+        }
+
+        test("a waiting saga whose node is killed is still woken at its deadline, on another node") {
+            val ledger = Ledger()
+            tellers(ledger, Gate(null)) { tellers ->
+                tellers.first().payouts.start("p", "claim-81") shouldBe Unit.right()
+                val waitingOn =
+                    eventually(30.seconds) { checkNotNull(ledger.ran.peek().firstOrNull()) { "not run yet" } }
+                val (killed, survivors) = tellers.partition { it.name == waitingOn }
+                killed.single().close()
+
+                survivors.forAll { survivor ->
+                    withClue("asked of ${survivor.name}, after $waitingOn was killed") {
+                        ending(survivor, "p", survivor.payouts) shouldBe Durable.Outcome.Refused("not approved")
                     }
                 }
             }
