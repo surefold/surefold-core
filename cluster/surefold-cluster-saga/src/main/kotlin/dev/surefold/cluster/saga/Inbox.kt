@@ -34,18 +34,32 @@ fun <I, E, A, T> Durable<I, E, A>.signal(
     signal: SagaSignal<T>,
     value: T,
     dedupe: String,
-): Delivered<E, A> {
+): Delivered<E, A> =
+    delivering(journal, id, InboxRecord(signal.name, dedupe, signal.codec.encode(value))).delivered(this)
+
+/** [signal] with the value still in its codec's bytes, answered as an [Ending]: `Running` is accepted. */
+internal fun Durable<*, *, *>.delivering(journal: Journal, id: String, record: InboxRecord): Ending {
     val inbox = inboxOf(kind, id)
     val kept = journal.read(inbox)
-    if (kept.any { InboxRecord.read(it.bytes).dedupe == dedupe }) return Delivered.Accepted
+    if (kept.any { InboxRecord.read(it.bytes).dedupe == record.dedupe }) return Ending.Running
     standing(journal, id)?.let {
         return it
     }
-    val record = InboxRecord(signal.name, dedupe, signal.codec.encode(value))
     return journal
         .append(inbox, kept.lastOrNull()?.sequence ?: 0, listOf(record.bytes()))
-        .fold({ signal(journal, id, signal, value, dedupe) }, { Delivered.Accepted })
+        .fold({ delivering(journal, id, record) }, { Ending.Running })
 }
+
+/** What [delivering] answered, as the caller of [signal] reads it. */
+internal fun <E, A> Ending.delivered(saga: Durable<*, E, A>): Delivered<E, A> =
+    when (this) {
+        is Ending.Done -> Delivered.Ended(Durable.Outcome.Done(saga.answer.decode(bytes)))
+        is Ending.Refused -> Delivered.Ended(Durable.Outcome.Refused(saga.error.decode(bytes)))
+        Ending.Forgotten -> Delivered.Unknown
+        Ending.Running,
+        is Ending.Stuck,
+        is Ending.Parked -> Delivered.Accepted
+    }
 
 /** The saga [id]'s inbox: a persistence id of its own, so a signal never overtakes the saga's runner. */
 internal fun inboxOf(kind: String, id: String) = PersistenceId("$kind-signals", id)
