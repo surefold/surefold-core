@@ -20,6 +20,7 @@ import java.io.DataOutputStream
 import java.security.SecureRandom
 import java.time.Instant
 import java.util.UUID
+import kotlin.time.Duration
 
 /** A saga whose steps are journalled, so a run that dies resumes from the last step it recorded (spec 0299). */
 class Durable<I, E, A>
@@ -89,6 +90,12 @@ interface DurableScope<E> : Fail<E> {
      * Journalled the first time and the same on every replay.
      */
     fun uuid(): String
+
+    /**
+     * The next [signal] this body has not taken, in the order its inbox holds them, or null once [within] has passed
+     * since the body first asked. With neither, the run stops [Waiting] until the deadline or the next signal.
+     */
+    fun <T> receive(signal: SagaSignal<T>, within: Duration): T?
 }
 
 /** A resumed saga's body called [called] where its journal holds [journalled]: its code changed under it. */
@@ -105,6 +112,10 @@ class Unsettled(val saga: String, val step: String) :
  */
 class Stuck(val saga: String, val step: String, cause: Throwable) :
     IllegalStateException("saga $saga is stuck undoing $step", cause)
+
+/** The body asked for a signal it has none of yet: nothing more runs until one comes or [until] passes. */
+class Waiting(val saga: String, val until: Instant) :
+    IllegalStateException("saga $saga is waiting for a signal until $until")
 
 /** Another runner wrote to this saga's journal meanwhile: this one stops rather than write a second history. */
 class Overtaken(val saga: String) : IllegalStateException("saga $saga was written by another runner")
@@ -216,6 +227,8 @@ private class Replay<E>(private val saga: Durable<*, E, *>, override val id: Str
     DurableScope<E> {
     private val names = mutableSetOf<String>()
     private var tick = 0
+    private val asked = mutableMapOf<String, Int>()
+    private val took = mutableMapOf<String, Int>()
     private lateinit var outer: Fail<E>
     val done = mutableListOf<Done<E>>()
 
@@ -286,6 +299,37 @@ private class Replay<E>(private val saga: Durable<*, E, *>, override val id: Str
 
     override fun uuid(): String = taken("uuid#${tick++}") { uuidV7(clock.get().now().toEpochMilli()).toString() }
 
+    override fun <T> receive(signal: SagaSignal<T>, within: Duration): T? {
+        val name = "receive:${signal.name}#${asked.next(signal.name)}"
+        val until =
+            Instant.ofEpochMilli(
+                taken("$name/until") {
+                        clock.get().now().plusMillis(within.inWholeMilliseconds).toEpochMilli().toString()
+                    }
+                    .toLong(),
+            )
+        val answer =
+            when (val kept = log.next()) {
+                is Record.Ended -> kept.named(name).bytes
+
+                null -> {
+                    val next = log.signals().filter { it.name == signal.name }.getOrNull(took[signal.name] ?: 0)
+                    when {
+                        next != null -> byteArrayOf(TOOK) + next.value
+                        clock.get().now() >= until -> byteArrayOf(TIMED_OUT)
+                        else -> throw Waiting(id, until)
+                    }.also { log.append(Record.Ended(name, it)) }
+                }
+
+                else -> throw Diverged(id, "$kept", name)
+            }
+        if (answer[0] == TIMED_OUT) return null
+        took.next(signal.name)
+        return signal.codec.decode(answer.copyOfRange(1, answer.size))
+    }
+
+    private fun MutableMap<String, Int>.next(key: String): Int = (this[key] ?: 0).also { this[key] = it + 1 }
+
     // A time or an id can't be unknown, so it is journalled once, as an end with no beginning.
     private fun taken(name: String, make: () -> String): String =
         when (val kept = log.next()) {
@@ -312,6 +356,8 @@ private class Log(private val journal: Journal, private val id: PersistenceId) {
     fun start(input: ByteArray): ByteArray = input.also { append(Record.Started(input)) }
 
     fun next(): Record? = records.getOrNull(at)?.takeUnless { it is Record.Undone }?.also { at++ }
+
+    fun signals(): List<InboxRecord> = journal.read(inboxOf(id.kind, id.id)).map { InboxRecord.read(it.bytes) }
 
     fun undoing(): Boolean = records.any { it is Record.Undoing }
 
@@ -403,6 +449,10 @@ private sealed interface Record {
         }
     }
 }
+
+/** The first byte of what a `receive` journals: a signal was taken, or the deadline passed first. */
+private const val TOOK: Byte = 1
+private const val TIMED_OUT: Byte = 0
 
 private val random = SecureRandom()
 
