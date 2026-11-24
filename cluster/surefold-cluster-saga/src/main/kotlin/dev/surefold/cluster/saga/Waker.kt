@@ -3,6 +3,7 @@ package dev.surefold.cluster.saga
 import dev.surefold.Schedule
 import dev.surefold.Shared
 import dev.surefold.actor.AskFailure
+import dev.surefold.actor.Ctx
 import dev.surefold.actor.EventCodec
 import dev.surefold.actor.PersistenceId
 import dev.surefold.actor.Reply
@@ -16,6 +17,7 @@ import dev.surefold.actor.remote.WireException
 import dev.surefold.actor.remote.WireIn
 import dev.surefold.actor.remote.WireOut
 import dev.surefold.actor.stay
+import dev.surefold.clock
 import dev.surefold.cluster.Cluster
 import dev.surefold.cluster.MemberEvent
 import dev.surefold.cluster.singleton
@@ -26,10 +28,12 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.DataOutputStream
+import java.time.Instant
 import java.util.WeakHashMap
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toKotlinDuration
 
 private const val SAGAS = "surefold-sagas"
 
@@ -47,6 +51,12 @@ private sealed interface Wakes {
 
     data class Ended(val saga: Saga) : Wakes
 
+    /** The saga waits for a signal until [until]: wake it then, and say once that is kept. */
+    data class Parked(val saga: Saga, val until: Instant, val reply: Reply<Unit>) : Wakes
+
+    /** The waker's own word when the earliest deadline it keeps falls due. */
+    data object Due : Wakes
+
     /** A node can now wake [kind]'s sagas: the one the waker runs on wakes them, if it is that node. */
     data class Known(val kind: String) : Wakes
 
@@ -61,6 +71,8 @@ private sealed interface Listing {
     data class Listed(override val saga: Saga) : Listing
 
     data class Unlisted(override val saga: Saga) : Listing
+
+    data class Parked(override val saga: Saga, val until: Instant) : Listing
 }
 
 // Locked rather than a `Shared`: making a waker spawns its singleton, and a step may run more than once.
@@ -74,6 +86,9 @@ internal fun Cluster.waker(): Waker = synchronized(wakers) { wakers.getOrPut(thi
  * when a member is removed, and this node's way to reach it. Only the kinds run on the node it runs on are woken.
  */
 internal class Waker(private val cluster: Cluster) {
+    // The clock bound where the first kind called `on`, which its sagas' deadlines were read from.
+    private val time = clock.get()
+
     private val kinds = Shared(emptyMap<String, (String) -> Unit>(), "surefold.sagas.kinds")
 
     private val singleton = cluster.singleton(SAGAS, WakesCodec) { waking() }
@@ -96,28 +111,53 @@ internal class Waker(private val cluster: Cluster) {
         }
     }
 
+    /** Keeps the saga's deadline, asking as long as it takes: a deadline not kept would leave it waiting for good. */
+    fun parked(kind: String, id: String, until: Instant): Either<AskFailure, Unit> {
+        val saga = Saga(kind, id)
+        return Schedule.spaced<AskFailure>(ASK_AGAIN_AFTER).retrying {
+            singleton.ask<Wakes, Unit>(LIST_WITHIN) { reply -> Wakes.Parked(saga, until, reply) }.bind()
+        }
+    }
+
     /** Takes an ended saga off the list; one whose word is lost is taken off when it is next woken. */
     fun ended(kind: String, id: String) = singleton.tell(Wakes.Ended(Saga(kind, id)))
 
     private fun waking() =
-        persistent<Wakes, Listing, Set<Saga>>(
+        persistent<Wakes, Listing, Map<Saga, Instant?>>(
                 id = PersistenceId(SAGAS, SAGAS),
-                empty = emptySet(),
+                empty = emptyMap(),
                 codec = ListingCodec,
-                command = { _, unfinished, message ->
+                command = { ctx, unfinished, message ->
                     when (message) {
                         is Wakes.Began if message.saga in unfinished -> none().then { _ -> message.reply(Unit) }
                         is Wakes.Began -> persist(Listing.Listed(message.saga)).then { _ -> message.reply(Unit) }
                         is Wakes.Ended if message.saga in unfinished -> persist(Listing.Unlisted(message.saga))
                         is Wakes.Ended -> none()
-                        is Wakes.Known -> none().then { _ -> wake(unfinished.filter { it.kind == message.kind }) }
-                        Wakes.WakeAll -> none().then { wake(unfinished) }
+                        is Wakes.Parked if unfinished[message.saga] == message.until ->
+                            none().then { _ -> message.reply(Unit) }
+                        is Wakes.Parked ->
+                            persist(Listing.Parked(message.saga, message.until)).then { kept ->
+                                message.reply(Unit)
+                                ctx.armFor(kept)
+                            }
+                        is Wakes.Known -> none().then { _ -> wake(unfinished.keys.filter { it.kind == message.kind }) }
+                        Wakes.WakeAll ->
+                            none().then { _ ->
+                                wake(unfinished.keys)
+                                ctx.armFor(unfinished)
+                            }
+                        Wakes.Due ->
+                            none().then { _ ->
+                                wake(unfinished.filterValues { it != null && it <= time.now() }.keys)
+                                ctx.armFor(unfinished.filterValues { it != null && it > time.now() })
+                            }
                     }
                 },
                 event = { unfinished, listing ->
                     when (listing) {
-                        is Listing.Listed -> unfinished + listing.saga
+                        is Listing.Listed -> unfinished + (listing.saga to null)
                         is Listing.Unlisted -> unfinished - listing.saga
+                        is Listing.Parked -> unfinished + (listing.saga to listing.until)
                     }
                 },
             )
@@ -131,6 +171,13 @@ internal class Waker(private val cluster: Cluster) {
                 cluster.subscribe(ctx.spawn("members", removals))
                 ctx.timers.after(Wakes.WakeAll, Duration.ZERO, Wakes.WakeAll)
             }
+
+    /** Says [Wakes.Due] to itself when the earliest of [sagas]' deadlines falls due, if any has one. */
+    private fun Ctx<Wakes>.armFor(sagas: Map<Saga, Instant?>) {
+        val earliest = sagas.values.filterNotNull().minOrNull() ?: return
+        val wait = java.time.Duration.between(time.now(), earliest).toKotlinDuration().coerceAtLeast(Duration.ZERO)
+        timers.after(Wakes.Due, wait, Wakes.Due)
+    }
 
     private fun wake(sagas: Iterable<Saga>) = sagas.forEach { saga -> kinds.peek()[saga.kind]?.invoke(saga.id) }
 }
@@ -154,7 +201,15 @@ private object WakesCodec : MessageCodec<Wakes> {
                 out.string(message.kind)
             }
 
-            Wakes.WakeAll -> error("$message never leaves its node")
+            is Wakes.Parked -> {
+                out.int(PARKED)
+                out.saga(message.saga)
+                out.long(message.until.toEpochMilli())
+                out.reply(message.reply, Codecs.unit)
+            }
+
+            Wakes.WakeAll,
+            Wakes.Due -> error("$message never leaves its node")
         }
 
     override fun read(input: WireIn): Wakes =
@@ -162,6 +217,7 @@ private object WakesCodec : MessageCodec<Wakes> {
             BEGAN -> Wakes.Began(input.saga(), input.reply(Codecs.unit))
             ENDED -> Wakes.Ended(input.saga())
             KNOWN -> Wakes.Known(input.string())
+            PARKED -> Wakes.Parked(input.saga(), Instant.ofEpochMilli(input.long()), input.reply(Codecs.unit))
             else -> throw WireException("no waker message has the tag $tag")
         }
 
@@ -178,9 +234,16 @@ private object ListingCodec : EventCodec<Listing> {
         ByteArrayOutputStream()
             .also { bytes ->
                 DataOutputStream(bytes).use { data ->
-                    data.writeByte(if (event is Listing.Listed) LISTED else UNLISTED)
+                    data.writeByte(
+                        when (event) {
+                            is Listing.Listed -> LISTED
+                            is Listing.Unlisted -> UNLISTED
+                            is Listing.Parked -> WAITING
+                        },
+                    )
                     data.writeUTF(event.saga.kind)
                     data.writeUTF(event.saga.id)
+                    if (event is Listing.Parked) data.writeLong(event.until.toEpochMilli())
                 }
             }
             .toByteArray()
@@ -192,6 +255,7 @@ private object ListingCodec : EventCodec<Listing> {
             when (tag) {
                 LISTED -> Listing.Listed(saga)
                 UNLISTED -> Listing.Unlisted(saga)
+                WAITING -> Listing.Parked(saga, Instant.ofEpochMilli(data.readLong()))
                 else -> error("no waker event has the tag $tag")
             }
         }
@@ -200,5 +264,7 @@ private object ListingCodec : EventCodec<Listing> {
 private const val BEGAN = 1
 private const val ENDED = 2
 private const val KNOWN = 3
+private const val PARKED = 4
 private const val LISTED = 1
 private const val UNLISTED = 2
+private const val WAITING = 3

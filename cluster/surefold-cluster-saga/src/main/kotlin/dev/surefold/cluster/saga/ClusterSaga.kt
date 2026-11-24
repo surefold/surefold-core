@@ -23,6 +23,7 @@ import dev.surefold.cluster.sharding
 import dev.surefold.fail.Either
 import dev.surefold.fail.fold
 import dev.surefold.metrics
+import java.time.Instant
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -85,6 +86,9 @@ internal sealed interface Ending {
     data class Stuck(val reason: String) : Ending
 
     data object Forgotten : Ending
+
+    /** Waiting for a signal until [until]: not ended, so it never answers an `await` and never leaves its node. */
+    data class Parked(val until: Instant) : Ending
 }
 
 private fun <I, E, A> Ending.outcome(saga: Durable<I, E, A>): Durable.Outcome<E, A> =
@@ -94,6 +98,7 @@ private fun <I, E, A> Ending.outcome(saga: Durable<I, E, A>): Durable.Outcome<E,
         Ending.Running -> Durable.Outcome.Running
         is Ending.Stuck -> Durable.Outcome.Stuck(reason)
         Ending.Forgotten -> Durable.Outcome.Forgotten
+        is Ending.Parked -> Durable.Outcome.Running
     }
 
 /** What a saga's entity handles: the first three from any node, the rest from its own runner and timers. */
@@ -129,6 +134,9 @@ private sealed interface Phase {
     ) : Phase
 
     data class Ended(val ending: Ending) : Phase
+
+    /** Waiting for a signal, with no runner: the waker or a signal wakes it, and it may passivate meanwhile. */
+    data class Parked(val awaiting: List<Reply<Ending>> = emptyList()) : Phase
 }
 
 /**
@@ -147,24 +155,24 @@ private fun <I, E, A> Durable<I, E, A>.entity(id: String, runs: Runs): Behaviour
         when (message) {
             is SagaCommand.Start -> starting(phase, message, run)
 
-            is SagaCommand.Await ->
-                when (phase) {
-                    is Phase.Ended -> stay().also { message.reply(phase.ending) }
-
-                    Phase.Fresh,
-                    is Phase.Running -> {
-                        ctx.timers.after(message.reply, message.within, SagaCommand.Expired(message.reply))
-                        val running = phase as? Phase.Running ?: run(null, Phase.Running(false, null))
-                        become(running.copy(awaiting = running.awaiting + message.reply))
-                    }
+            is SagaCommand.Await -> {
+                if (phase !is Phase.Ended) {
+                    ctx.timers.after(message.reply, message.within, SagaCommand.Expired(message.reply))
                 }
+                awaited(phase, message.reply, run)
+            }
 
-            SagaCommand.Wake -> if (phase == Phase.Fresh) become(run(null, Phase.Running(false, null))) else stay()
+            SagaCommand.Wake -> woken(phase, run)
 
             SagaCommand.Busy ->
                 stay().also {
                     if (phase is Phase.Running) runs.wake(id) else ctx.timers.cancel(SagaCommand.Busy)
                 }
+
+            is SagaCommand.Expired if phase is Phase.Parked && message.reply in phase.awaiting -> {
+                message.reply(Ending.Running)
+                become(phase.copy(awaiting = phase.awaiting - message.reply))
+            }
 
             SagaCommand.Begun,
             is SagaCommand.Ran,
@@ -173,9 +181,32 @@ private fun <I, E, A> Durable<I, E, A>.entity(id: String, runs: Runs): Behaviour
     }
 }
 
+/**
+ * Where an `await` leaves the entity: answered if the saga ended, else waiting with the others, a run begun if none
+ * was.
+ */
+private fun awaited(phase: Phase, reply: Reply<Ending>, run: (ByteArray?, Phase.Running) -> Phase.Running) =
+    when (phase) {
+        is Phase.Ended -> stay().also { reply(phase.ending) }
+        is Phase.Parked -> become(phase.copy(awaiting = phase.awaiting + reply))
+        is Phase.Running -> become(phase.copy(awaiting = phase.awaiting + reply))
+        Phase.Fresh -> become(run(null, Phase.Running(false, null, awaiting = listOf(reply))))
+    }
+
+/** A `Wake` drives a saga nothing here is driving: one not read yet, or one parked waiting for a signal. */
+private fun woken(phase: Phase, run: (ByteArray?, Phase.Running) -> Phase.Running) =
+    when (phase) {
+        Phase.Fresh -> become(run(null, Phase.Running(false, null)))
+        is Phase.Parked -> become(run(null, Phase.Running(true, null, awaiting = phase.awaiting)))
+        is Phase.Running,
+        is Phase.Ended -> stay()
+    }
+
 private fun starting(phase: Phase, start: SagaCommand.Start, run: (ByteArray?, Phase.Running) -> Phase.Running) =
     when (phase) {
         is Phase.Running if phase.started -> stay().also { start.reply(Unit) }
+
+        is Phase.Parked -> stay().also { start.reply(Unit) }
 
         is Phase.Running ->
             become(phase.copy(input = phase.input ?: start.input, starting = phase.starting + start.reply))
@@ -211,6 +242,10 @@ private fun heard(phase: Phase.Running, message: SagaCommand, run: (ByteArray?, 
 /** Where a runner's end leaves the entity: a start that came while it found nothing is run now. */
 private fun ran(ending: Ending?, phase: Phase.Running, run: (ByteArray?, Phase.Running) -> Phase.Running): Phase {
     if (ending == Ending.Forgotten && phase.input != null) return run(phase.input, phase.copy(started = false))
+    if (ending is Ending.Parked) {
+        phase.starting.forEach { it(Unit) }
+        return Phase.Parked(phase.awaiting)
+    }
     // Overtaken: the other runner wrote `Started`, and the next message here reads what it wrote since.
     val answer = ending ?: Ending.Running
     phase.awaiting.forEach { it(answer) }
@@ -232,7 +267,15 @@ private fun <I, E, A> Durable<I, E, A>.runner(
         val ending = runs.bound {
             ending(ctx.journal, id, input, { runs.waker.began(kind, id) }) { entity.tell(SagaCommand.Begun) }
         }
-        if (ending != null && ending !is Ending.Stuck) runs.waker.ended(kind, id)
+        when (ending) {
+            is Ending.Parked -> runs.waker.parked(kind, id, ending.until)
+            is Ending.Done,
+            is Ending.Refused,
+            Ending.Forgotten -> runs.waker.ended(kind, id)
+            null,
+            Ending.Running,
+            is Ending.Stuck -> Unit
+        }
         entity.tell(SagaCommand.Ran(ending))
         stop()
     }
@@ -258,6 +301,8 @@ private object EndingCodec : MessageCodec<Ending> {
             }
 
             Ending.Forgotten -> out.int(FORGOTTEN)
+
+            is Ending.Parked -> error("$message never leaves its node")
         }
 
     override fun read(input: WireIn): Ending =
