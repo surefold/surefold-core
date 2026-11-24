@@ -55,12 +55,12 @@ per step and nothing is ever half done.
 
 ## Stack
 
-- [ ] **`spec-0317-one-node`** — `Durable.cancel`, the boundary check, `Cancelling` and `Cancelled` journalled,
+- [x] **`spec-0317-one-node`** ([#1141](https://github.com/surefold/surefold-core/pull/1141)) — `Durable.cancel`, the boundary check, `Cancelling` and `Cancelled` journalled,
       `Outcome.Cancelled`, undos told `Undo.Cancelled`.
       Done when: a saga cancelled before its second step undoes the first and ends `Cancelled`; one cancelled while
       parked in `receive` does the same when resumed; one already undoing a refusal ends `Refused`; and a node dying
       at every append after the cancel ends the saga `Cancelled` with each undo run once.
-- [ ] **`spec-0317-cluster`** — `Sagas.cancel` from any node, and `Cancelled` across the wire to `await`.
+- [x] **`spec-0317-cluster`** ([#1142](https://github.com/surefold/surefold-core/pull/1142)) — `Sagas.cancel` from any node, and `Cancelled` across the wire to `await`.
       Done when: a three-node test cancels a saga parked in `receive` from another node, and every node awaits it as
       `Cancelled` well before its deadline, with its hold undone.
 - [ ] **`spec-0317-docs`** — a withdrawn claim added to the `docs/cluster.md` approval section, with a compiled fence.

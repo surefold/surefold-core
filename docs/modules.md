@@ -123,7 +123,7 @@ library outside the JDK and Kotlin. Their coordinates did not change: they are s
 | `surefold-actor-projection` | the journal as a `Stream`, for read models that resume ([guide](cluster.md#state-that-survives)) | `surefold-actor`, `surefold-stream` | none | yes |
 | `surefold-actor-remote` | actors across nodes over TCP, optional mutual TLS ([guide](cluster.md#two-nodes)) | `surefold-actor` | none | yes |
 | `surefold-cluster` | membership, downing, sharding, singletons, reliable delivery, topics ([guide](cluster.md#a-cluster)) | `surefold-actor-remote` | none | yes |
-| `surefold-cluster-saga` | durable sagas: step code journalled and replayed after a crash, as sharded entities (spec 0299), waiting for signals (spec 0316) | `surefold-cluster` | none | yes |
+| `surefold-cluster-saga` | durable sagas: step code journalled and replayed after a crash, as sharded entities (spec 0299), waiting for signals (spec 0316) and called off (spec 0317) | `surefold-cluster` | none | yes |
 
 ### Data
 
