@@ -89,7 +89,7 @@ and already lists every unfinished saga.
       passivated parked saga holds no runner.
 - [x] **`spec-0316-cluster`** ([#1137](https://github.com/surefold/surefold-core/pull/1137)) — `Sagas.signal` from any node, waking a parked saga.
       Done when: a signal sent from another node resumes a parked saga, and one sent after it ended answers `Ended`.
-- [ ] **`spec-0316-docs`** — the approval above as a `docs/cluster.md` section with a compiled fence.
+- [x] **`spec-0316-docs`** ([#1138](https://github.com/surefold/surefold-core/pull/1138)) — the approval above as a `docs/cluster.md` section with a compiled fence.
       Done when: `GuideExampleTest` compiles it.
 
 ## Acceptance
