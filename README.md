@@ -192,7 +192,7 @@ your classpath, and which are unpublished.
 | `surefold-actor-remote` | actors across nodes over TCP ([guide](docs/cluster.md)) | nothing |
 | `surefold-actor-journal-jdbc` | the event journal, snapshots and offsets on JDBC ([guide](docs/cluster.md)) | nothing |
 | `surefold-cluster` | membership, sharding, singletons, reliable delivery, topics ([guide](docs/cluster.md)) | nothing |
-| `surefold-cluster-saga` | sagas journalled step by step, that end on another node after a crash ([guide](docs/cluster.md#a-saga-that-outlives-its-node)) | nothing |
+| `surefold-cluster-saga` | sagas journalled step by step, that end on another node after a crash and wait days for a signal ([guide](docs/cluster.md#a-saga-that-outlives-its-node)) | nothing |
 | `surefold-test` | `story` and `eventually` for service tests ([guide](docs/testing.md)) | nothing |
 | `surefold-junit` | suites whose tests run together, expectations as values, aspects ([guide](docs/testing.md#suites)) | `junit-platform-engine` |
 

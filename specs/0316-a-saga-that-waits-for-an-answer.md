@@ -76,18 +76,18 @@ and already lists every unfinished saga.
 
 ## Stack
 
-- [ ] **`spec-0316-inbox`** — `SagaSignal`, the inbox, `Delivered`, and `Durable.signal` on one node.
+- [x] **`spec-0316-inbox`** ([#1134](https://github.com/surefold/surefold-core/pull/1134)) — `SagaSignal`, the inbox, `Delivered`, and `Durable.signal` on one node.
       Done when: a signal to a running saga is `Accepted` once and a repeat with its `dedupe` is answered the same
       with one inbox record, one to an ended saga answers `Ended` with its outcome, and one to a fresh id `Unknown`.
-- [ ] **`spec-0316-receive`** — `receive` in the body, its deadline and choice journalled, `Waiting` on one node.
+- [x] **`spec-0316-receive`** ([#1135](https://github.com/surefold/surefold-core/pull/1135)) — `receive` in the body, its deadline and choice journalled, `Waiting` on one node.
       Done when: on a test clock, a saga resumed after a signal takes it, one resumed past the deadline gets `null`,
       a signal and an expired deadline both present are decided by the journal and replay the same after a restart,
       and a 0128 unkind run crashing at every boundary ends every saga as it would have without a crash.
-- [ ] **`spec-0316-park`** — a parked saga's entity stops its `Busy` word and may passivate; the waker keeps
+- [x] **`spec-0316-park`** ([#1136](https://github.com/surefold/surefold-core/pull/1136)) — a parked saga's entity stops its `Busy` word and may passivate; the waker keeps
       deadlines and wakes sagas at them.
       Done when: a three-node test kills the node of a parked saga and the deadline still wakes it elsewhere, and a
       passivated parked saga holds no runner.
-- [ ] **`spec-0316-cluster`** — `Sagas.signal` from any node, waking a parked saga.
+- [x] **`spec-0316-cluster`** ([#1137](https://github.com/surefold/surefold-core/pull/1137)) — `Sagas.signal` from any node, waking a parked saga.
       Done when: a signal sent from another node resumes a parked saga, and one sent after it ended answers `Ended`.
 - [ ] **`spec-0316-docs`** — the approval above as a `docs/cluster.md` section with a compiled fence.
       Done when: `GuideExampleTest` compiles it.
