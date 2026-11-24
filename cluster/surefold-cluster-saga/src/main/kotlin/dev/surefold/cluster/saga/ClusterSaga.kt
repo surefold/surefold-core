@@ -106,6 +106,9 @@ internal sealed interface Ending {
 
     data object Forgotten : Ending
 
+    /** Called off by `cancel` for [reason], its ended steps undone. */
+    data class Cancelled(val reason: String) : Ending
+
     /** Waiting for a signal until [until]: not ended, so it never answers an `await` and never leaves its node. */
     data class Parked(val until: Instant) : Ending
 }
@@ -118,6 +121,7 @@ private fun <I, E, A> Ending.outcome(saga: Durable<I, E, A>): Durable.Outcome<E,
         is Ending.Stuck -> Durable.Outcome.Stuck(reason)
         Ending.Forgotten -> Durable.Outcome.Forgotten
         is Ending.Parked -> Durable.Outcome.Running
+        is Ending.Cancelled -> Durable.Outcome.Cancelled(reason)
     }
 
 /** What a saga's entity handles: the first three from any node, the rest from its own runner and timers. */
@@ -318,6 +322,7 @@ private fun <I, E, A> Durable<I, E, A>.runner(
             is Ending.Parked -> runs.waker.parked(kind, id, ending.until)
             is Ending.Done,
             is Ending.Refused,
+            is Ending.Cancelled,
             Ending.Forgotten -> runs.waker.ended(kind, id)
             null,
             Ending.Running,
@@ -349,6 +354,11 @@ private object EndingCodec : MessageCodec<Ending> {
 
             Ending.Forgotten -> out.int(FORGOTTEN)
 
+            is Ending.Cancelled -> {
+                out.int(CANCELLED)
+                out.string(message.reason)
+            }
+
             is Ending.Parked -> error("$message never leaves its node")
         }
 
@@ -359,6 +369,7 @@ private object EndingCodec : MessageCodec<Ending> {
             RUNNING -> Ending.Running
             STUCK -> Ending.Stuck(input.string())
             FORGOTTEN -> Ending.Forgotten
+            CANCELLED -> Ending.Cancelled(input.string())
             else -> throw WireException("no saga ending has the tag $tag")
         }
 }
@@ -413,3 +424,4 @@ private const val REFUSED = 2
 private const val RUNNING = 3
 private const val STUCK = 4
 private const val FORGOTTEN = 5
+private const val CANCELLED = 6
