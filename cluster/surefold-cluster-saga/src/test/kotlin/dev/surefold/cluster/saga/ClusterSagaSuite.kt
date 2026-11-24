@@ -298,5 +298,21 @@ object ClusterSagaSuite : Suite(concurrent = false) {
                 }
             }
         }
+
+        test("a signal sent from another node wakes a waiting saga, and one sent after it ended answers how it ended") {
+            val ledger = Ledger()
+            tellers(ledger, Gate(null)) { tellers ->
+                val (first, second, third) = tellers
+                first.payouts.start("p", "claim-81") shouldBe Unit.right()
+                eventually(30.seconds) { checkNotNull(ledger.ran.peek().firstOrNull()) { "not run yet" } }
+
+                third.payouts.signal("p", Approve, "ops", dedupe = "t-1") shouldBe Delivered.Accepted.right()
+
+                val paid = Durable.Outcome.Done("paid claim-81, approved by ops")
+                ending(second, "p", second.payouts) shouldBe paid
+                third.payouts.signal("p", Approve, "late", dedupe = "t-2") shouldBe Delivered.Ended(paid).right()
+                second.payouts.signal("never", Approve, "ops", dedupe = "t-3") shouldBe Delivered.Unknown.right()
+            }
+        }
     }
 }

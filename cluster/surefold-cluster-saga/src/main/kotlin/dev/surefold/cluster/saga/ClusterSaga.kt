@@ -22,6 +22,7 @@ import dev.surefold.cluster.Sharded
 import dev.surefold.cluster.sharding
 import dev.surefold.fail.Either
 import dev.surefold.fail.fold
+import dev.surefold.fail.map
 import dev.surefold.metrics
 import java.time.Instant
 import kotlin.time.Duration
@@ -45,6 +46,24 @@ internal constructor(
             .entity(id)
             .ask<SagaCommand, Ending>(within + ANSWER_WITHIN) { SagaCommand.Await(within, it) }
             .fold({ Durable.Outcome.Running }, { it.outcome(saga) })
+
+    /**
+     * Sends [value] to the saga [id], waking it if it waits for one: kept while it has started and not ended. A second
+     * signal with the same [dedupe] is answered [Delivered.Accepted] and not kept again.
+     */
+    fun <T> signal(
+        id: String,
+        signal: SagaSignal<T>,
+        value: T,
+        dedupe: String,
+        within: Duration = 10.seconds,
+    ): Either<AskFailure, Delivered<E, A>> =
+        sharded
+            .entity(id)
+            .ask<SagaCommand, Ending>(within) {
+                SagaCommand.Signal(InboxRecord(signal.name, dedupe, signal.codec.encode(value)), it)
+            }
+            .map { it.delivered(saga) }
 }
 
 /**
@@ -110,6 +129,12 @@ internal sealed interface SagaCommand {
     /** Drive the saga if nothing here is: the `surefold-sagas` waker's word after a member is removed. */
     data object Wake : SagaCommand
 
+    /** Keep [record] in the saga's inbox, answering as `Sagas.signal` reads it through [Ending.delivered]. */
+    class Signal(val record: InboxRecord, val reply: Reply<Ending>) : SagaCommand
+
+    /** A signal was kept: drive the saga if it waits, or again once the run that may have missed it parks. */
+    data object Signalled : SagaCommand
+
     /** A running entity's own timer: word to itself through its region, which counts as not idle. */
     data object Busy : SagaCommand
 
@@ -131,6 +156,7 @@ private sealed interface Phase {
         val input: ByteArray?,
         val starting: List<Reply<Unit>> = emptyList(),
         val awaiting: List<Reply<Ending>> = emptyList(),
+        val signalled: Boolean = false,
     ) : Phase
 
     data class Ended(val ending: Ending) : Phase
@@ -162,7 +188,11 @@ private fun <I, E, A> Durable<I, E, A>.entity(id: String, runs: Runs): Behaviour
                 awaited(phase, message.reply, run)
             }
 
-            SagaCommand.Wake -> woken(phase, run)
+            is SagaCommand.Signal ->
+                stay().also { ctx.spawn("signal-${++launched}", signaller(id, message, ctx.self)).tell(Go) }
+
+            SagaCommand.Wake,
+            SagaCommand.Signalled -> woken(phase, run, signalled = message == SagaCommand.Signalled)
 
             SagaCommand.Busy ->
                 stay().also {
@@ -193,12 +223,15 @@ private fun awaited(phase: Phase, reply: Reply<Ending>, run: (ByteArray?, Phase.
         Phase.Fresh -> become(run(null, Phase.Running(false, null, awaiting = listOf(reply))))
     }
 
-/** A `Wake` drives a saga nothing here is driving: one not read yet, or one parked waiting for a signal. */
-private fun woken(phase: Phase, run: (ByteArray?, Phase.Running) -> Phase.Running) =
+/**
+ * A `Wake` or a kept signal drives a saga nothing here is driving: one not read yet, or one parked waiting. A running
+ * one may have read its inbox before the signal was kept, so a signal has it run again should it park.
+ */
+private fun woken(phase: Phase, run: (ByteArray?, Phase.Running) -> Phase.Running, signalled: Boolean) =
     when (phase) {
         Phase.Fresh -> become(run(null, Phase.Running(false, null)))
         is Phase.Parked -> become(run(null, Phase.Running(true, null, awaiting = phase.awaiting)))
-        is Phase.Running,
+        is Phase.Running -> if (signalled) become(phase.copy(signalled = true)) else stay()
         is Phase.Ended -> stay()
     }
 
@@ -235,6 +268,8 @@ private fun heard(phase: Phase.Running, message: SagaCommand, run: (ByteArray?, 
         is SagaCommand.Start,
         is SagaCommand.Await,
         SagaCommand.Wake,
+        is SagaCommand.Signal,
+        SagaCommand.Signalled,
         SagaCommand.Busy,
         is SagaCommand.Expired -> phase
     }
@@ -244,6 +279,7 @@ private fun ran(ending: Ending?, phase: Phase.Running, run: (ByteArray?, Phase.R
     if (ending == Ending.Forgotten && phase.input != null) return run(phase.input, phase.copy(started = false))
     if (ending is Ending.Parked) {
         phase.starting.forEach { it(Unit) }
+        if (phase.signalled) return run(null, Phase.Running(true, null, awaiting = phase.awaiting))
         return Phase.Parked(phase.awaiting)
     }
     // Overtaken: the other runner wrote `Started`, and the next message here reads what it wrote since.
@@ -252,6 +288,17 @@ private fun ran(ending: Ending?, phase: Phase.Running, run: (ByteArray?, Phase.R
     phase.starting.forEach { it(Unit) }
     return if (ending == null) Phase.Fresh else Phase.Ended(ending)
 }
+
+/**
+ * A child that keeps a signal in the saga [id]'s inbox, answers its sender, tells [entity] if it was kept, and stops.
+ */
+private fun Durable<*, *, *>.signaller(id: String, signal: SagaCommand.Signal, entity: ActorRef<SagaCommand>) =
+    behaviour<Go, Unit>(Unit) { ctx, _, _ ->
+        val answer = delivering(ctx.journal, id, signal.record)
+        signal.reply(answer)
+        if (answer == Ending.Running) entity.tell(SagaCommand.Signalled)
+        stop()
+    }
 
 /** What starts a runner. */
 private data object Go
@@ -334,6 +381,13 @@ internal object SagaCodec : MessageCodec<SagaCommand> {
 
             SagaCommand.Wake -> out.int(WAKE)
 
+            is SagaCommand.Signal -> {
+                out.int(SIGNAL)
+                out.bytes(message.record.bytes())
+                out.reply(message.reply, EndingCodec)
+            }
+
+            SagaCommand.Signalled,
             SagaCommand.Busy,
             SagaCommand.Begun,
             is SagaCommand.Ran,
@@ -345,6 +399,7 @@ internal object SagaCodec : MessageCodec<SagaCommand> {
             START -> SagaCommand.Start(input.bytes(), input.reply(Codecs.unit))
             AWAIT -> SagaCommand.Await(input.long().milliseconds, input.reply(EndingCodec))
             WAKE -> SagaCommand.Wake
+            SIGNAL -> SagaCommand.Signal(InboxRecord.read(input.bytes()), input.reply(EndingCodec))
             else -> throw WireException("no saga message has the tag $tag")
         }
 }
@@ -352,6 +407,7 @@ internal object SagaCodec : MessageCodec<SagaCommand> {
 private const val START = 1
 private const val AWAIT = 2
 private const val WAKE = 3
+private const val SIGNAL = 4
 private const val DONE = 1
 private const val REFUSED = 2
 private const val RUNNING = 3
