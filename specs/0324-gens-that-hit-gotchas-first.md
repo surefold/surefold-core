@@ -73,7 +73,8 @@ reporting — better IDE tree, but forces the engine for every property; deferre
       Done when: a property that rejects `""` fails on an edge before random; a seeded
       `check` replays the same first random sample; message includes seed and value.
 - [ ] **`spec-0324-docs`** — `docs/testing.md` fence + `modules.md` / agent module lists.
-      Done when: the guide fence compiles and `./gradlew :surefold-gen:check` is green.
+      Done when: the guide fence compiles under `CoreGuidesSuite` and
+      `./gradlew :surefold-gen:check` is green.
 
 ## Acceptance
 
