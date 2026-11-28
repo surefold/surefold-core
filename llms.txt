@@ -58,6 +58,7 @@ Facts worth having before anything else:
 - `surefold-stream-test`: `TestStreams` and `TestClock`, every stage on the calling
   thread and time the test moves.
 - `surefold-test`: `story` (Given, When, Then), `eventually(within)`.
+- `surefold-gen`: `Gen`, `sample`, `check` — random inputs that hit gotchas before noise.
 - `surefold-junit`: a JUnit Platform engine; a `Suite` object's tests share one
   `Resource`, and Gradle and the IDE report them as Jupiter's.
 - `surefold-junit-testkit`: `shouldHaveSucceeded`, `shouldHaveFailed`,

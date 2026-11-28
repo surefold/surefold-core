@@ -111,6 +111,7 @@ All on Maven Central as `dev.surefold:<module>`, on one version.
 - `surefold-stream-actors`: the `surefold-actor` backend.
 - `surefold-stream-test`: `TestStreams` and `TestClock`.
 - `surefold-test`: `story`, `eventually`.
+- `surefold-gen`: `Gen`, `sample`, `check` — random inputs that hit gotchas before noise.
 - `surefold-junit`: `Suite` objects run by a JUnit Platform engine.
 - `surefold-junit-testkit`: `shouldHaveSucceeded`, `shouldHaveFailed` and `failureOf` on a suite's run.
 - `surefold-app`: the graph, `SurefoldApp`, `closingOf`, probes, `testApp`, `Migrated`.
