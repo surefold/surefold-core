@@ -16,6 +16,7 @@ sleep.
 | tests that run concurrently | `object … : Suite()` | `surefold-junit` |
 | tests that share a resource and run concurrently | `object … : SharedSuite<R>()` | `surefold-junit` |
 | one test for each of a list of cases | `testEach(name, cases) { case -> }` | `surefold-junit` |
+| random inputs that hit gotchas first | `Gen`, `sample`, `check(gen) { … }` | `surefold-gen` |
 | a story as a suite's test, returning its expectations | `story { }` | `surefold-junit` |
 | one class | its constructor, with fakes as arguments | nothing |
 | several nodes together, one faked | `testApp(module.subgraph<Root>().overriding(…)) { }` | `surefold-app` |
@@ -452,6 +453,35 @@ test calls to make a fresh one. Put what the tests share on purpose in
 A test that needs a directory of its own, as Jupiter's `@TempDir` gives one,
 calls `withTempDirectory { dir -> … }`. The directory is new and empty, and
 it is deleted with everything in it once the block returns or throws.
+
+### Random inputs
+
+`surefold-gen` draws values for a property check the way ZIO Test's `Gen` does:
+compose generators into a domain type, take one with `sample`, or run many with
+`check`. Built-ins carry a small list of gotchas (empty string, range ends, and
+so on); `check` tries those first, then fills the rest from a seed. A failure
+names the seed and the sample so you can replay with `sample(seed)` or
+`check(..., seed = …)`. Shrinking is not in this cut.
+
+<!-- testing-gen -->
+```kotlin
+import dev.surefold.gen.Gen
+import dev.surefold.gen.check
+
+data class Person(val name: String, val age: Int)
+
+val people: Gen<Person> =
+    Gen.string.zip(Gen.int(1..120)) { name, age -> Person(name, age) }
+
+fun main() {
+    val one = people.sample(seed = 42L)
+    check(people, samples = 100, seed = 7L) { person ->
+        require(person.age in 1..120)
+        require(person.name.length <= Gen.DEFAULT_STRING_MAX)
+    }
+    println(one.age)
+}
+```
 
 ### A test for each case
 

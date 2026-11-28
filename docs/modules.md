@@ -137,6 +137,7 @@ did not change: they are still `dev.surefold:<name>`.
 | Module | For | Surefold deps | Adds | Published |
 |---|---|---|---|---|
 | `surefold-assert` | checks for tests, failing at the test's own line: `shouldBe`, `shouldBeRight` and `shouldBeLeft` for Surefold's `Either`, the string, collection and map matchers, and `withClue` ([guide](testing.md#assertions)) | `surefold` | `opentest4j` 1.3.0 | yes |
+| `surefold-gen` | random generators for property checks: `Gen`, `sample`, and `check` that hits gotchas before noise ([guide](testing.md#random-inputs)) | `surefold` | none | yes |
 | `surefold-test` | `story` and `eventually` ([guide](testing.md#stories-and-waiting)) | `surefold` | none | yes |
 | `surefold-junit` | `Suite` objects whose tests share one `Resource` and record their checks, run by a JUnit Platform engine | `surefold`, `surefold-assert`, `surefold-test` | `junit-platform-engine` 6.1.3 | yes |
 | `surefold-junit-testkit` | checks on a suite's run, read from `EngineTestKit`: `shouldHaveSucceeded`, `shouldHaveFailed`, `shouldHaveSkipped`, `failureOf`, `finishOrder` ([guide](testing.md#testing-an-aspect)) | none | `junit-platform-testkit` 6.1.3, `opentest4j` 1.3.0 | yes |
