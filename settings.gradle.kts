@@ -26,6 +26,8 @@ module("core", "surefold-replay")
 
 module("core", "surefold-assert")
 
+module("core", "surefold-gen")
+
 module("core", "surefold-junit")
 
 module("core", "surefold-junit-testkit")
