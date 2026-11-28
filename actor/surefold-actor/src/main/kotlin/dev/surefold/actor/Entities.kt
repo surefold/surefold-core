@@ -60,6 +60,7 @@ private class EntityBook<M : Any, S, E>(
     private val restart: Schedule<Failure<E>, *>?,
     private val onRunning: (delta: Int) -> Unit,
     private val startIf: (id: String, message: M) -> Boolean,
+    private val runningIds: MutableSet<String>,
     private val entity: (id: String) -> Behaviour<M, S, E>,
 ) {
     private val running = HashMap<String, ActorRef<M>>()
@@ -117,6 +118,7 @@ private class EntityBook<M : Any, S, E>(
     /** An entity has stopped, by passivation or by itself; what arrived for it meanwhile starts it again. */
     fun ended(ctx: Ctx<Entities<M>>, ref: ActorRef<*>) {
         val id = ids.remove(ref) ?: return
+        runningIds.remove(id)
         onRunning(-1)
         if (running[id] == ref) {
             running.remove(id)
@@ -134,6 +136,7 @@ private class EntityBook<M : Any, S, E>(
         ctx.watch(ref)
         running[id] = ref
         ids[ref] = id
+        runningIds.add(id)
         onRunning(1)
         return ref
     }
@@ -142,6 +145,7 @@ private class EntityBook<M : Any, S, E>(
     @OptIn(PlumbingSeam::class)
     fun stopping(ctx: Ctx<Entities<M>>) {
         if (ids.isNotEmpty()) onRunning(-ids.size)
+        runningIds.removeAll(ids.values)
         ids.clear()
         handOn.drop(ctx, DeadLetter.Why.Stopped)
     }
@@ -196,13 +200,16 @@ fun <M : Any, S, E> entities(
     onRunning: (delta: Int) -> Unit = {},
     startIf: (id: String, message: M) -> Boolean = { _, _ -> true },
     around: Around<M> = Around(),
+    runningIds: MutableSet<String> = mutableSetOf(),
     entity: (id: String) -> Behaviour<M, S, E>,
 ): Behaviour<Entities<M>, Any?, Nothing> {
     require(passivateAfter.isPositive()) { "passivateAfter must be positive, was $passivateAfter" }
     val wrapped: (String) -> Behaviour<M, S, E> = { id -> entity(id).around(id, around).concurrentReads() }
     return behaviour<Entities<M>, Any?>(null) { ctx, state, message ->
             @Suppress("UNCHECKED_CAST")
-            val book = state as EntityBook<M, S, E>? ?: EntityBook(passivateAfter, restart, onRunning, startIf, wrapped)
+            val book =
+                state as EntityBook<M, S, E>?
+                    ?: EntityBook(passivateAfter, restart, onRunning, startIf, runningIds, wrapped)
             when (message) {
                 is Deliver -> book.deliver(ctx, message.id, message.message)
                 is Passivate -> book.passivate(ctx, message.id)

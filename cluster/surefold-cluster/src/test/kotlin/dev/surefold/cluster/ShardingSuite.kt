@@ -130,6 +130,34 @@ private fun List<Bar>.awaitUp(count: Int) = forAll { bar ->
 
 object ShardingSuite : Suite() {
     init {
+        test("running, shardOf and ownerOf name the entities this node hosts") {
+            val ports = List(2) { freePort() }
+            val seeds = Discovery.static(*ports.map { Node("", "127.0.0.1", it) }.toTypedArray())
+            val running = TabsRunning()
+            val bars = ports.mapIndexed { i, port -> Bar("n${i + 1}", port, seeds, running) }
+            try {
+                bars.awaitUp(2)
+                val ids = (1..10).map { "t-$it" }
+                ids.forEach { id ->
+                    bars.first().tabs.entity(id).tell(Spend(1))
+                    bars.first().tabs.entity(id).ask<Tab, String>(1.minutes) { Bill(it) }
+                }
+                bars.first().cluster.await(1.minutes) {
+                    bars.sumOf { it.tabs.running().size } == 10
+                } shouldBe true
+                val union = bars.flatMap { it.tabs.running() }.toSet()
+                union shouldBe ids.toSet()
+                bars.forAll { bar ->
+                    bar.tabs.running().forEach { id ->
+                        bar.tabs.ownerOf(id) shouldBe bar.cluster.self
+                        bar.tabs.shardOf(id) shouldBe Placement.shardOf(id, Sharding.SHARDS)
+                    }
+                }
+            } finally {
+                bars.forEach(Bar::close)
+            }
+        }
+
         test("an entity told and asked from any node runs on the one node that owns it") {
             val ports = List(3) { freePort() }
             val seeds = Discovery.static(*ports.map { Node("", "127.0.0.1", it) }.toTypedArray())
