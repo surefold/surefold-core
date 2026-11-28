@@ -199,7 +199,7 @@ fun <M : Any, S, E> entities(
     entity: (id: String) -> Behaviour<M, S, E>,
 ): Behaviour<Entities<M>, Any?, Nothing> {
     require(passivateAfter.isPositive()) { "passivateAfter must be positive, was $passivateAfter" }
-    val wrapped: (String) -> Behaviour<M, S, E> = { id -> entity(id).around(id, around) }
+    val wrapped: (String) -> Behaviour<M, S, E> = { id -> entity(id).around(id, around).concurrentReads() }
     return behaviour<Entities<M>, Any?>(null) { ctx, state, message ->
             @Suppress("UNCHECKED_CAST")
             val book = state as EntityBook<M, S, E>? ?: EntityBook(passivateAfter, restart, onRunning, startIf, wrapped)
