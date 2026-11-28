@@ -335,6 +335,12 @@ data class DeadLetter(val recipient: Address, val message: Any, val why: Why) {
          * already kept as many for it as it may while its mailbox was full (spec 0095).
          */
         Full,
+
+        /**
+         * An entities manager's `startIf` rejected the message and the entity was not running, so it was not started
+         * (spec 0318).
+         */
+        Discarded,
     }
 }
 
@@ -356,6 +362,12 @@ sealed interface AskFailure {
      * so no answer will come. Never the answer from an actor in this process.
      */
     data object Unreachable : AskFailure
+
+    /**
+     * An entities manager's `startIf` rejected the message and the entity was not running, so it was not started (spec
+     * 0318).
+     */
+    data object Discarded : AskFailure
 }
 
 /**

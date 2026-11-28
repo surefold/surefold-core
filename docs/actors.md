@@ -364,6 +364,7 @@ fun Scope<Nothing>.office() {
     spawn("spooler", spooler()).tell(Print(Job("cy", "memo")))
 
     // One printer per desk, started on first use and stopped after half an hour idle.
+    // `startIf` can refuse to wake an idle id (spec 0318); default is start on any message.
     val desks = spawn("desks", entities(passivateAfter = 30.minutes) { _ -> printer() })
     desks.entity("desk-7").tell(Job("di", "letter"))
 }

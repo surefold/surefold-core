@@ -227,6 +227,7 @@ fun <M : Any, S, E> Cluster.sharding(
     shards: Int = Sharding.SHARDS,
     role: String? = null,
     rebalance: Rebalance? = null,
+    startIf: (id: String, message: M) -> Boolean = { _, _ -> true },
     entity: (id: String) -> Behaviour<M, S, E>,
 ): Sharded<M> {
     val path = Sharding.path(kind)
@@ -243,7 +244,10 @@ fun <M : Any, S, E> Cluster.sharding(
             owner = { shard, members, moved -> Placement.owner(kind, shard, members.holding(role), moved[shard]) },
             start = { ctx, shard ->
                 val counted = { delta: Int -> onRunning(delta).also { meter?.running(shard, delta) } }
-                ctx.spawn("shard-$shard", entities(passivateAfter, onRunning = counted, entity = entity))
+                ctx.spawn(
+                    "shard-$shard",
+                    entities(passivateAfter, onRunning = counted, startIf = startIf, entity = entity),
+                )
             },
             // Counted once each message is handed to its entity here, which is the load a rebalance weighs (spec 0090).
             target = { manager, id ->

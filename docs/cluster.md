@@ -265,7 +265,11 @@ kind's ids over 256 shards and each shard over the `Up` members, by a hash
 every node computes the same way, so there is no coordinator to ask.
 `entity(id)` is a ref that stays good while the entity moves: tell it from any
 node and the message reaches the owner. An entity that has had nothing for
-`passivateAfter` stops, and starts again on its next message.
+`passivateAfter` stops, and starts again on its next message. With
+`startIf = { _, message -> message !is Expire }`, a message that fails the
+predicate does not start an idle entity: the tell is a discarded dead letter,
+and an ask ends with `AskFailure.Discarded`. An entity that is already running
+still receives every message.
 
 When a member joins or goes, only the shards it gains or loses move. The node
 that wins a shard waits until the one that had it has stopped it, so an entity

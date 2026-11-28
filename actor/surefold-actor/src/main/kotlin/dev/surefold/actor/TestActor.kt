@@ -479,12 +479,9 @@ internal constructor(
         val reply = TestReply<A>(Address(address.node, "/temp/ask-${asks.incrementAndGet()}", 1))
         val asked = message(reply)
         send(asked)
-        val answer = reply.answer.get()
-        return when {
-            answer != null -> answer.right()
-            stopped -> AskFailure.Stopped.left()
-            else -> error("$asked was handled by ${address.path} and never replied")
-        }
+        return reply.outcome()
+            ?: if (stopped) AskFailure.Stopped.left()
+            else error("$asked was handled by ${address.path} and never replied")
     }
 
     /** A message or a signal; whatever stops the actor, `Stopping` and its watchers' `Terminated` follow. */
@@ -782,10 +779,17 @@ private class TestSignalled(val signal: Signal)
 /** The start of a new test actor, on the queue so that it runs to idle like a message. */
 private object TestStarted
 
-private class TestReply<A : Any>(override val address: Address) : Reply<A> {
+private class TestReply<A : Any>(override val address: Address) : Reply<A>, Unanswerable {
     val answer = AtomicReference<A>()
+    private val failure = AtomicReference<AskFailure>()
 
     override fun invoke(answer: A) {
         check(this.answer.compareAndSet(null, answer)) { "a second reply, $answer, after ${this.answer.get()}" }
     }
+
+    override fun unanswered(why: AskFailure) {
+        failure.compareAndSet(null, why)
+    }
+
+    fun outcome(): Either<AskFailure, A>? = answer.get()?.right() ?: failure.get()?.left()
 }
