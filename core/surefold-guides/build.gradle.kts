@@ -18,6 +18,8 @@ dependencies {
     // For the testing guide's suites, which compile against surefold-junit and surefold-test.
     testImplementation(project(":surefold-test"))
     testImplementation(project(":surefold-assert"))
+    // For the testing guide's Gen / check example (spec 0318).
+    testImplementation(project(":surefold-gen"))
 }
 
 // The pages the suites compile, declared so that editing one re-runs them rather than leaving a stale answer behind.
