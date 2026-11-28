@@ -42,7 +42,13 @@ fi
 modules=$(grep -oE '^module\("[^"]+", "[^"]+"\)' settings.gradle.kts | sed -E 's/module\("([^"]+)", "([^"]+)"\)/\1\/\2/')
 
 # The root build gives every other module's tests surefold-junit, so these reach every module.
-runs_on=$(grep -A1 '^val surefoldJunitRunsOn' build.gradle.kts | grep -oE '"[^"]+"' | tr -d '"')
+# The set may span lines (`setOf(\n  "a",\n  "b",\n)`); take through the closing paren.
+runs_on=$(
+  awk '/^val surefoldJunitRunsOn/,/^[[:space:]]*\)/' build.gradle.kts |
+    grep -oE '"[^"]+"' |
+    tr -d '"' ||
+    true
+)
 if [[ -z "$runs_on" ]]; then
   echo build
   exit 0
