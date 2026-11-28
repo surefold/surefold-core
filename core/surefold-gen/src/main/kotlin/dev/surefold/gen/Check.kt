@@ -14,17 +14,13 @@ fun <A> check(
 ) {
     require(samples >= 0) { "samples must be >= 0" }
     val edges = gen.edges.take(Gen.EDGE_CAP)
-    edges.forEach { value ->
-        runCatching { property(value) }
-            .onFailure { throw CheckFailed(seed = seed, sample = value, edge = true, cause = it) }
-    }
+    edges.forEach { value -> tryProperty(seed, value, edge = true, property) }
     val remaining = (samples - edges.size).coerceAtLeast(0)
     if (remaining == 0) return
     val random = Random(seed)
     repeat(remaining) {
         val value = gen.draw(random)
-        runCatching { property(value) }
-            .onFailure { throw CheckFailed(seed = seed, sample = value, edge = false, cause = it) }
+        tryProperty(seed, value, edge = false, property)
     }
 }
 
@@ -50,6 +46,17 @@ class CheckFailed(val seed: Long, val sample: Any?, val edge: Boolean, cause: Th
         },
         cause,
     )
+
+@Suppress("TooGenericExceptionCaught") // A property may throw AssertionError or require(); wrap those only.
+private fun <A> tryProperty(seed: Long, value: A, edge: Boolean, property: (A) -> Unit) {
+    try {
+        property(value)
+    } catch (failure: InterruptedException) {
+        throw failure
+    } catch (failure: Throwable) {
+        throw CheckFailed(seed = seed, sample = value, edge = edge, cause = failure)
+    }
+}
 
 private fun render(sample: Any?): String =
     when (sample) {
