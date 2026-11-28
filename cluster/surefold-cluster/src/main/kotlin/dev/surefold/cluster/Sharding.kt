@@ -25,6 +25,7 @@ import dev.surefold.actor.resumedProducer
 import dev.surefold.actor.spawn
 import dev.surefold.actor.stay
 import dev.surefold.actor.tellIfRoom
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -159,9 +160,28 @@ internal constructor(
     private val cluster: Cluster,
     private val codec: MessageCodec<M>,
     private val producers: Producers?,
+    private val shards: Int,
+    private val role: String?,
+    private val localIds: MutableSet<String>,
 ) {
     /** The entity [id], wherever it runs now: a ref that stays good while it moves between nodes. */
     fun entity(id: String): ActorRef<M> = ShardedRef(region, id)
+
+    /** Ids of this kind whose entity is started on this node right now (spec 0322). */
+    fun running(): Set<String> = localIds.toSet()
+
+    /** The shard [id] hashes to, with this kind's shard count (spec 0322). */
+    fun shardOf(id: String): Int = Placement.shardOf(id, shards)
+
+    /**
+     * The Up member that owns [id] under the current view and any load move, or null while no member holds that shard
+     * (spec 0322).
+     */
+    fun ownerOf(id: String): Node? {
+        val shard = shardOf(id)
+        val moved = cluster.balance.moved[kind]?.get(shard)
+        return Placement.owner(kind, shard, cluster.view.members.holding(role), moved)
+    }
 
     /** The durable producer [producer], a gone life's, started again under [ctx] to send what it kept (spec 0099). */
     internal fun resume(ctx: Ctx<*>, producer: String) =
@@ -240,6 +260,7 @@ fun <M : Any, S, E> Cluster.sharding(
     var count = 0L
     val onRunning = { delta: Int -> counting.withLock { running.set((count + delta).also { count = it }.toDouble()) } }
     val meter = rebalance?.let { LoadMeter(kind, it, shards, role).also(meters::add) }
+    val localIds = ConcurrentHashMap.newKeySet<String>()
     val hosting =
         Hosting<M, Entities<M>>(
             eager = false,
@@ -253,6 +274,7 @@ fun <M : Any, S, E> Cluster.sharding(
                         onRunning = counted,
                         startIf = startIf,
                         around = around,
+                        runningIds = localIds,
                         entity = entity,
                     ),
                 )
@@ -264,7 +286,7 @@ fun <M : Any, S, E> Cluster.sharding(
             },
         )
     val region = region(path, codec, shards, hosting, kind)
-    return Sharded(kind, region, this, codec, producers).also { producers?.kind(it) }
+    return Sharded(kind, region, this, codec, producers, shards, role, localIds).also { producers?.kind(it) }
 }
 
 /** A region at [path] on this node, reachable from the others at the same path. */
