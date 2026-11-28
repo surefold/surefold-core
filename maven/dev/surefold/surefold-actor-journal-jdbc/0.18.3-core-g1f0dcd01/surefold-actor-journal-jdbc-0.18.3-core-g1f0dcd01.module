@@ -1,0 +1,266 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-actor-journal-jdbc",
+    "version": "0.18.3-core-g1f0dcd01",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01.jar",
+          "size": 84638,
+          "sha512": "10d9caf36e98630019d5cd1cff93145323372e232f86da0b4264d357de85a6b8c7c415b2bda581473e36022af08cea9b76b2ea5be586aecce336e3bd388e75f8",
+          "sha256": "384ff6ef16912c7d79fac3b4461449ed8c12f015567bd983b936d22ea413c4cf",
+          "sha1": "05065e45f0297059ecbda662b3143a2b1ce8de18",
+          "md5": "cc6caa2c6b88f455ef1486c42f9d0600"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01.jar",
+          "size": 84638,
+          "sha512": "10d9caf36e98630019d5cd1cff93145323372e232f86da0b4264d357de85a6b8c7c415b2bda581473e36022af08cea9b76b2ea5be586aecce336e3bd388e75f8",
+          "sha256": "384ff6ef16912c7d79fac3b4461449ed8c12f015567bd983b936d22ea413c4cf",
+          "sha1": "05065e45f0297059ecbda662b3143a2b1ce8de18",
+          "md5": "cc6caa2c6b88f455ef1486c42f9d0600"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-sources.jar",
+          "url": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-sources.jar",
+          "size": 22736,
+          "sha512": "7282d9ad01ba0d5c6c43db1fdd463732ea79b8cbd5033968b7b930c03bb2b6ff6862249a306a1f54f14628c4846c89571a84e76e7832eba4906525e34326f91f",
+          "sha256": "84ee8a5b260105752de02473432b4d23aeee8bbad31b839871321ead602a88e6",
+          "sha1": "1995e38914fe635bb53e3709ad67a91131107026",
+          "md5": "a3646069bc137bc0cad264416bb10051"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesApiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor-journal-jdbc",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.postgresql",
+          "module": "postgresql",
+          "version": {
+            "requires": "42.7.7"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-test-fixtures.jar",
+          "url": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-test-fixtures.jar",
+          "size": 6529,
+          "sha512": "633921a787314eb245da7d746e083947e7dde75c5a74a712cb656b2d2353994d71d562cedae491fe5f600b7bce4dfddccc577b202d1408bd5513db31aeb3b47c",
+          "sha256": "94d49e719f5e854b7c757ef81f3d1065019483d3a15c2e75a3f1af9549665656",
+          "sha1": "55ed0ec0d535a5b3ea338ce0fc122ccf25d357d3",
+          "md5": "3cc8b206af9629496dda1bd6cb10c36f"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-journal-jdbc-test-fixtures",
+          "version": "0.18.3-core-g1f0dcd01"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesRuntimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.testcontainers",
+          "module": "testcontainers-postgresql",
+          "version": {
+            "requires": "2.0.5"
+          }
+        },
+        {
+          "group": "org.liquibase",
+          "module": "liquibase-core",
+          "version": {
+            "requires": "4.32.0"
+          }
+        },
+        {
+          "group": "com.zaxxer",
+          "module": "HikariCP",
+          "version": {
+            "requires": "7.1.0"
+          }
+        },
+        {
+          "group": "dev.surefold",
+          "module": "surefold-actor-journal-jdbc",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.postgresql",
+          "module": "postgresql",
+          "version": {
+            "requires": "42.7.7"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-test-fixtures.jar",
+          "url": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-test-fixtures.jar",
+          "size": 6529,
+          "sha512": "633921a787314eb245da7d746e083947e7dde75c5a74a712cb656b2d2353994d71d562cedae491fe5f600b7bce4dfddccc577b202d1408bd5513db31aeb3b47c",
+          "sha256": "94d49e719f5e854b7c757ef81f3d1065019483d3a15c2e75a3f1af9549665656",
+          "sha1": "55ed0ec0d535a5b3ea338ce0fc122ccf25d357d3",
+          "md5": "3cc8b206af9629496dda1bd6cb10c36f"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-journal-jdbc-test-fixtures",
+          "version": "0.18.3-core-g1f0dcd01"
+        }
+      ]
+    },
+    {
+      "name": "testFixturesSourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-test-fixtures-sources.jar",
+          "url": "surefold-actor-journal-jdbc-0.18.3-core-g1f0dcd01-test-fixtures-sources.jar",
+          "size": 2960,
+          "sha512": "7655e8fe30590dbe291ed081afba260bc9d7fc757890b0222729e6ac0033ac0db243e8971c2dcd82755843a8748410c66fb12c7429645ffdce235bba3184a28c",
+          "sha256": "68e7ef49ad8a46ff771cdcc445058b10dd73477e54cc57dea161d0abbf6352aa",
+          "sha1": "a7675a2e0181a4ab2eca0a45a932c0dad5c92fab",
+          "md5": "ecac498efbfe55145c4478f03bda02ef"
+        }
+      ],
+      "capabilities": [
+        {
+          "group": "dev.surefold",
+          "name": "surefold-actor-journal-jdbc-test-fixtures",
+          "version": "0.18.3-core-g1f0dcd01"
+        }
+      ]
+    }
+  ]
+}

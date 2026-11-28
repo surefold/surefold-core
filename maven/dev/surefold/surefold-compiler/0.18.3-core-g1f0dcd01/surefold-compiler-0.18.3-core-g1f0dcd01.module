@@ -1,0 +1,102 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-compiler",
+    "version": "0.18.3-core-g1f0dcd01",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-compiler-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-compiler-0.18.3-core-g1f0dcd01.jar",
+          "size": 44586,
+          "sha512": "aa9d0fbb9338c301407efd10402e2688333d6b9632c41c51c86b2930ff4822a06eded4b527aca19edd1d03ea80a62eea52e8b4682103aa329516ca25f98c4813",
+          "sha256": "ce8ff84fea2512656330b8514b38a5285eeaeab4fab6bc4601d04b0bc7bc09fd",
+          "sha1": "bd53411a1982b3ae1b08570c0cb999c6ec3d6355",
+          "md5": "0dc2f5b614f169a83ab3fedda549689b"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 21,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-compiler-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-compiler-0.18.3-core-g1f0dcd01.jar",
+          "size": 44586,
+          "sha512": "aa9d0fbb9338c301407efd10402e2688333d6b9632c41c51c86b2930ff4822a06eded4b527aca19edd1d03ea80a62eea52e8b4682103aa329516ca25f98c4813",
+          "sha256": "ce8ff84fea2512656330b8514b38a5285eeaeab4fab6bc4601d04b0bc7bc09fd",
+          "sha1": "bd53411a1982b3ae1b08570c0cb999c6ec3d6355",
+          "md5": "0dc2f5b614f169a83ab3fedda549689b"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-compiler-0.18.3-core-g1f0dcd01-sources.jar",
+          "url": "surefold-compiler-0.18.3-core-g1f0dcd01-sources.jar",
+          "size": 9763,
+          "sha512": "0caea890e4f7dcc09a4aa5bc46699813f7a46435be9f7090768e85ccc1e308f05603af9bcd8eb78c0c4f9d53da027828776f936e0f23bbc7cf4ae54154582ec0",
+          "sha256": "7802c263eafcbaa64f0d785924a65f699fb15f59cc6c8fa5434e7e6e03cffde1",
+          "sha1": "a26badd173c3c2ab36f358ff5e624fbd99b82eb3",
+          "md5": "a4d7d63ddfabffaad252badce0b4a7b9"
+        }
+      ]
+    }
+  ]
+}

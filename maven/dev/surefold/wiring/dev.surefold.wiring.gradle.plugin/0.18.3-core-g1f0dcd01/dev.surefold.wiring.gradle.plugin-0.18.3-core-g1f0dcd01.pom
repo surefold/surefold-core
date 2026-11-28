@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>dev.surefold.wiring</groupId>
+  <artifactId>dev.surefold.wiring.gradle.plugin</artifactId>
+  <version>0.18.3-core-g1f0dcd01</version>
+  <packaging>pom</packaging>
+  <name>surefold-app-gradle</name>
+  <description>surefold-app as a build gate: every graph in a project checked and drawn as it compiles.</description>
+  <url>https://github.com/surefold/surefold-core</url>
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
+  <developers>
+    <developer>
+      <id>matthewjones372</id>
+      <name>Matt Jones</name>
+    </developer>
+  </developers>
+  <scm>
+    <connection>scm:git:https://github.com/surefold/surefold-core.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/surefold/surefold-core.git</developerConnection>
+    <url>https://github.com/surefold/surefold-core</url>
+  </scm>
+  <dependencies>
+    <dependency>
+      <groupId>dev.surefold</groupId>
+      <artifactId>surefold-app-gradle</artifactId>
+      <version>0.18.3-core-g1f0dcd01</version>
+    </dependency>
+  </dependencies>
+</project>

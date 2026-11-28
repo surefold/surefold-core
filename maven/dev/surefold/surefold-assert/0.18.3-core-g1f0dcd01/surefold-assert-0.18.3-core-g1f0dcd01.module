@@ -1,0 +1,130 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-assert",
+    "version": "0.18.3-core-g1f0dcd01",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.opentest4j",
+          "module": "opentest4j",
+          "version": {
+            "requires": "1.3.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-assert-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-assert-0.18.3-core-g1f0dcd01.jar",
+          "size": 42766,
+          "sha512": "464c6abbdce9f3620c6ebf694f03ce629a5438304fec6187eee2e778a76ee2a9d1081e0098c7e286dd6e46d5cd22fd9eea067aa33b85896895de7606c64938f7",
+          "sha256": "8052854740a1245bc91113d7ef68644125da3f5ad73274ab5de70c5cd869b3b2",
+          "sha1": "4372af4b85a4f73240e03dfb8d10e2c67c28024b",
+          "md5": "526376a6294b4e5930bbbbbcd204e8f8"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.opentest4j",
+          "module": "opentest4j",
+          "version": {
+            "requires": "1.3.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-assert-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-assert-0.18.3-core-g1f0dcd01.jar",
+          "size": 42766,
+          "sha512": "464c6abbdce9f3620c6ebf694f03ce629a5438304fec6187eee2e778a76ee2a9d1081e0098c7e286dd6e46d5cd22fd9eea067aa33b85896895de7606c64938f7",
+          "sha256": "8052854740a1245bc91113d7ef68644125da3f5ad73274ab5de70c5cd869b3b2",
+          "sha1": "4372af4b85a4f73240e03dfb8d10e2c67c28024b",
+          "md5": "526376a6294b4e5930bbbbbcd204e8f8"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-assert-0.18.3-core-g1f0dcd01-sources.jar",
+          "url": "surefold-assert-0.18.3-core-g1f0dcd01-sources.jar",
+          "size": 11256,
+          "sha512": "37423889f9cd53aaa6307ba541df10ea09fcd2aaa20114ce359e968cebea119aac2b9b886ade6c83e53ae1ee5b31cf32752beb4282cda9fa93b6191fd15d24f0",
+          "sha256": "e5e0c2333272c926ac90814f547c8164a3be6b9e070271ebcec8d8e81c2388bf",
+          "sha1": "4a0ce7cfcd326f3f861168e0879dc4bfb9f769ba",
+          "md5": "d73b60e877917c91379c16b65c485bb9"
+        }
+      ]
+    }
+  ]
+}

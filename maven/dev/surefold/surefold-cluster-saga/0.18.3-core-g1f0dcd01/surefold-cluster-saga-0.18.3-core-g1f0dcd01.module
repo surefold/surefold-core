@@ -1,0 +1,116 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.surefold",
+    "module": "surefold-cluster-saga",
+    "version": "0.18.3-core-g1f0dcd01",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.7.1"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-cluster",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-cluster-saga-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-cluster-saga-0.18.3-core-g1f0dcd01.jar",
+          "size": 154164,
+          "sha512": "ffc67cbfab56d469296c50195cefafcc8ca30c3ad140046f865e9d54145c409a1d67a40de96cf387bfaf065035bc2277ca15c1822974e0913115fb0b09768f48",
+          "sha256": "c224c41604b0f0607bd31b6af6f870d4ee1f7605a8fe7a62eb3396eb9a78dd3b",
+          "sha1": "ff3b6603c77670f126d4fd5c536cf33a021a6e0c",
+          "md5": "cb161240a5529f0095219d076c00fb20"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.environment": "standard-jvm",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "jvm"
+      },
+      "dependencies": [
+        {
+          "group": "dev.surefold",
+          "module": "surefold-cluster",
+          "version": {
+            "requires": "0.18.3-core-g1f0dcd01"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.4.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "surefold-cluster-saga-0.18.3-core-g1f0dcd01.jar",
+          "url": "surefold-cluster-saga-0.18.3-core-g1f0dcd01.jar",
+          "size": 154164,
+          "sha512": "ffc67cbfab56d469296c50195cefafcc8ca30c3ad140046f865e9d54145c409a1d67a40de96cf387bfaf065035bc2277ca15c1822974e0913115fb0b09768f48",
+          "sha256": "c224c41604b0f0607bd31b6af6f870d4ee1f7605a8fe7a62eb3396eb9a78dd3b",
+          "sha1": "ff3b6603c77670f126d4fd5c536cf33a021a6e0c",
+          "md5": "cb161240a5529f0095219d076c00fb20"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "surefold-cluster-saga-0.18.3-core-g1f0dcd01-sources.jar",
+          "url": "surefold-cluster-saga-0.18.3-core-g1f0dcd01-sources.jar",
+          "size": 19039,
+          "sha512": "856ac7344a08903e08d3cc4f7e50872d4aa822bda0395ada8808fda381198131121f6e9da1f788a39ee434009f2ee6de725994e9c7e29c9303e629ff840c4bb1",
+          "sha256": "ad9b77ebb04c1204990653e6cd9253bb107bbeaba3cef690727f8712dfbb7dc9",
+          "sha1": "54dc3bfae5b8b5413e8ae7733c10bec87d1a42bd",
+          "md5": "639e2655430e63243acb03622256c25f"
+        }
+      ]
+    }
+  ]
+}
