@@ -11,32 +11,33 @@ class Gen<out A>
 internal constructor(
     /** Ordered gotchas this generator always knows; [check] runs them before random samples. */
     val edges: List<A>,
-    private val draw: (Random) -> A,
+    private val sampleFrom: (Random) -> A,
 ) {
 
     /** One value. The same [seed] draws the same value for this generator. */
-    fun sample(seed: Long = Random.Default.nextLong()): A = draw(Random(seed))
+    fun sample(seed: Long = Random.Default.nextLong()): A = sampleFrom(Random(seed))
 
-    fun <B> map(transform: (A) -> B): Gen<B> = Gen(cap(edges.map(transform)), { random -> transform(draw(random)) })
+    internal fun draw(random: Random): A = sampleFrom(random)
+
+    fun <B> map(transform: (A) -> B): Gen<B> =
+        Gen(cap(edges.map(transform))) { random -> transform(sampleFrom(random)) }
 
     fun <B> flatMap(transform: (A) -> Gen<B>): Gen<B> =
-        Gen(
-            cap(edges.flatMap { transform(it).edges }),
-            { random -> transform(draw(random)).draw(random) },
-        )
+        Gen(cap(edges.flatMap { transform(it).edges })) { random ->
+            transform(sampleFrom(random)).sampleFrom(random)
+        }
 
     fun <B, C> zip(other: Gen<B>, transform: (A, B) -> C): Gen<C> =
-        Gen(
-            cap(edges.flatMap { a -> other.edges.map { b -> transform(a, b) } }),
-            { random -> transform(draw(random), other.draw(random)) },
-        )
+        Gen(cap(edges.flatMap { a -> other.edges.map { b -> transform(a, b) } })) { random ->
+            transform(sampleFrom(random), other.sampleFrom(random))
+        }
 
     fun filter(predicate: (A) -> Boolean): Gen<A> =
         Gen(edges.filter(predicate)) { random ->
-            var next = draw(random)
+            var next = sampleFrom(random)
             var tries = 0
             while (!predicate(next) && tries < FILTER_TRIES) {
-                next = draw(random)
+                next = sampleFrom(random)
                 tries++
             }
             require(predicate(next)) { "Gen.filter discarded $FILTER_TRIES draws" }
