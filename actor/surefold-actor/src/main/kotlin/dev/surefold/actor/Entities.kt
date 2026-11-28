@@ -59,6 +59,7 @@ private class EntityBook<M : Any, S, E>(
     private val passivateAfter: Duration,
     private val restart: Schedule<Failure<E>, *>?,
     private val onRunning: (delta: Int) -> Unit,
+    private val startIf: (id: String, message: M) -> Boolean,
     private val entity: (id: String) -> Behaviour<M, S, E>,
 ) {
     private val running = HashMap<String, ActorRef<M>>()
@@ -77,12 +78,25 @@ private class EntityBook<M : Any, S, E>(
             held += message to Carriers.capture()
             return
         }
+        if (id !in running && !startIf(id, message)) {
+            discard(ctx, id, message)
+            return
+        }
         // The idle timer is armed before the entity has the message, so an entity that is busy with it can already
         // be passivated: a clock moved on once the entity has begun sees a timer to fire.
         ctx.timers.after(IdleKey(id), passivateAfter, Passivate(id))
         val ref = running[id] ?: start(ctx, id)
         @OptIn(PlumbingSeam::class)
         if (handOn.tell(ctx, id, ref, message)) ctx.timers.after(DrainKey, DRAIN_AFTER, Drain())
+    }
+
+    /**
+     * An idle id rejected by [startIf]: a Discarded dead letter, and any ask in the message ends at once (spec 0318).
+     */
+    private fun discard(ctx: Ctx<Entities<M>>, id: String, message: M) {
+        endAsks(message, AskFailure.Discarded)
+        val address = Address(ctx.self.address.node, "${ctx.self.address.path}/$id", ctx.self.address.incarnation)
+        ctx.deadLetter(DeadLetter(address, message, DeadLetter.Why.Discarded))
     }
 
     /** Offers each busy entity what was kept for it, in order, as far as it has room, and comes back for the rest. */
@@ -134,24 +148,40 @@ private class EntityBook<M : Any, S, E>(
 }
 
 /**
+ * Ends any ask carried in [message] with [why]: the message itself when it is [Unanswerable], and each of its fields
+ * that is. Used when a message never reaches a turn (spec 0318).
+ */
+internal fun endAsks(message: Any, why: AskFailure) {
+    if (message is Unanswerable) message.unanswered(why)
+    message.javaClass.declaredFields.forEach { field ->
+        if (!field.trySetAccessible()) return@forEach
+        (field.get(message) as? Unanswerable)?.unanswered(why)
+    }
+}
+
+/**
  * A manager of entities: one actor per id, spawned by [entity] as the manager's child on the id's first message, and
  * stopped once it has had nothing for [passivateAfter]. A message for an entity that is stopping is kept, and starts it
  * again once it has stopped. Talk to one through [entity], whose ref stays good while the entity comes and goes.
  * [restart] applies to each entity on its own. [onRunning] hears each entity start (+1) and end (-1), and every one
  * still running when the manager stops, for a count of what runs (spec 0081); it runs on the manager's turn. A manager
  * restarted by its own supervision stops its entities without hearing of it, so it keeps a count only when it is
- * spawned without a restart, as sharding spawns it.
+ * spawned without a restart, as sharding spawns it. [startIf] decides whether a message may start an idle entity; when
+ * it says no, the message is a [DeadLetter.Why.Discarded] dead letter and any ask in it ends with
+ * [AskFailure.Discarded] (spec 0318). An entity that is already running, or stopping with messages kept for it, still
+ * receives every message.
  */
 fun <M : Any, S, E> entities(
     passivateAfter: Duration,
     restart: Schedule<Failure<E>, *>? = null,
     onRunning: (delta: Int) -> Unit = {},
+    startIf: (id: String, message: M) -> Boolean = { _, _ -> true },
     entity: (id: String) -> Behaviour<M, S, E>,
 ): Behaviour<Entities<M>, Any?, Nothing> {
     require(passivateAfter.isPositive()) { "passivateAfter must be positive, was $passivateAfter" }
     return behaviour<Entities<M>, Any?>(null) { ctx, state, message ->
             @Suppress("UNCHECKED_CAST")
-            val book = state as EntityBook<M, S, E>? ?: EntityBook(passivateAfter, restart, onRunning, entity)
+            val book = state as EntityBook<M, S, E>? ?: EntityBook(passivateAfter, restart, onRunning, startIf, entity)
             when (message) {
                 is Deliver -> book.deliver(ctx, message.id, message.message)
                 is Passivate -> book.passivate(ctx, message.id)

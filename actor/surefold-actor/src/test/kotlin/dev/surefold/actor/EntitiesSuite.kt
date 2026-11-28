@@ -2,6 +2,7 @@ package dev.surefold.actor
 
 import dev.surefold.TestClock
 import dev.surefold.clock
+import dev.surefold.fail.left
 import dev.surefold.fail.right
 import dev.surefold.junit.Suite
 import dev.surefold.junit.shouldBe
@@ -15,12 +16,16 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 private sealed interface Kennel
 
 private data class Feed(val grams: Int) : Kennel
 
 private data class Weight(val reply: Reply<Pair<String, Int>>) : Kennel
+
+/** A cleanup that must not wake an idle pup (spec 0318). */
+private data object Expire : Kennel
 
 /** Tells the pup it will be called back as it stops: a message that arrives while its entity is stopping. */
 private data object Recall : Kennel
@@ -45,6 +50,8 @@ private fun pup(
                     message.reply(id to grams)
                     stay()
                 }
+
+                Expire -> stay()
 
                 Recall -> become(grams to true)
 
@@ -109,6 +116,40 @@ object EntitiesSuite : Suite() {
             log.filter { it.endsWith("stopped") } shouldContainExactly listOf("rex stopped")
 
             rex.ask(1.minutes) { Weight(it) } shouldBe ("rex" to 0).right()
+        }
+
+        test("an idle entity stays asleep when startIf rejects the message") {
+            val log = ConcurrentLinkedQueue<String>()
+            val kennel =
+                entities(passivateAfter = 10.minutes, startIf = { _, message -> message is Feed }) { id ->
+                        pup(id, log)
+                    }
+                    .test("kennel")
+            val rex = kennel.entity("rex")
+
+            rex.tell(Expire)
+            kennel.children.size shouldBe 0
+            log.filter { it.endsWith("started") } shouldContainExactly emptyList()
+            kennel.deadLetters.map { it.message to it.why } shouldContainExactly
+                listOf(Expire to DeadLetter.Why.Discarded)
+
+            rex.ask(1.seconds) { Weight(it) } shouldBe AskFailure.Discarded.left()
+            kennel.children.size shouldBe 0
+            log.filter { it.endsWith("started") } shouldContainExactly emptyList()
+        }
+
+        test("startIf does not discard a message for an entity that is already running") {
+            val log = ConcurrentLinkedQueue<String>()
+            val kennel =
+                entities(passivateAfter = 10.minutes, startIf = { _, message -> message !is Expire }) { id ->
+                        pup(id, log)
+                    }
+                    .test("kennel")
+            val rex = kennel.entity("rex")
+            rex.tell(Feed(50))
+            rex.tell(Expire)
+            rex.ask(1.minutes) { Weight(it) } shouldBe ("rex" to 50).right()
+            kennel.deadLetters shouldContainExactly emptyList()
         }
 
         test("a message for an entity that arrives while it stops is kept, and starts it again") {
