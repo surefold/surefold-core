@@ -10,6 +10,7 @@ import dev.surefold.junit.shouldNotBe
 import dev.surefold.junit.shouldStartWith
 import dev.surefold.junit.withClue
 import dev.surefold.scope
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration.Companion.milliseconds
@@ -145,6 +146,24 @@ object RuntimeSuite : Suite() {
             }
 
             answer shouldBe AskFailure.Stopped.left()
+        }
+
+        test("tryTell returns false on a full mailbox without failing the sender") {
+            val letters = ConcurrentLinkedQueue<DeadLetter>()
+            val taken = scope {
+                onDeadLetter(letters::add)
+                val release = CountDownLatch(1)
+                val full = spawn("full", log(), capacity = 1)
+                full.tell(Wait(release))
+                full.tell(Add(1))
+                val refused = full.tryTell(Add(2))
+                release.countDown()
+                awaitIdle()
+                refused
+            }
+
+            taken shouldBe false
+            letters.map { it.message to it.why } shouldBe listOf(Add(2) to DeadLetter.Why.Full)
         }
 
         test("a tell into a full mailbox fails an actor, and waits for anyone else") {

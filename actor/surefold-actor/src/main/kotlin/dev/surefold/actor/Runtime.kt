@@ -73,9 +73,27 @@ internal fun <M : Any> ActorRef<M>.offer(message: M): Boolean {
 }
 
 /**
+ * True if [message] was accepted into a mailbox (or the actor had stopped, where a tell is a dead letter); false only
+ * when the mailbox is full, which is also a [DeadLetter.Why.Full] dead letter (spec 0321). A mailbox of 64 or more
+ * counts as full up to 16 messages early, as [offer] says. An entity's ref asks its manager. Prefer this over
+ * [tellIfRoom], which is the same under a plumbing seam for plumbing that keeps rather than discards.
+ */
+fun <M : Any> ActorRef<M>.tryTell(message: M): Boolean =
+    when (this) {
+        is Cell<*, *, *> -> {
+            @Suppress("UNCHECKED_CAST") val cell = this as Cell<M, *, *>
+            cell.tryTell(message)
+        }
+
+        is EntityRef<M> -> manager.tryTell(Deliver(id, message))
+
+        else -> true.also { tell(message) }
+    }
+
+/**
  * [message] told if this has room, or has stopped, where a tell is a dead letter: false only when it is an actor's full
- * mailbox, and a tell from a turn would throw (spec 0095). A mailbox of 64 or more counts as full up to 16 messages
- * early, as [offer] says. An entity's ref asks its manager.
+ * mailbox, and a tell from a turn would throw (spec 0095). Unlike [tryTell], a full mailbox is not itself a dead letter
+ * here: callers such as [HandOn] keep the message instead (spec 0321).
  */
 @PlumbingSeam
 fun <M : Any> ActorRef<M>.tellIfRoom(message: M): Boolean =
@@ -737,6 +755,14 @@ private class Cell<M : Any, S, E>(
         enqueue(carrying(message))
         return true
     }
+
+    /** As [offer], or a tell once stopped; a full mailbox is a Full dead letter and false (spec 0321). */
+    fun tryTell(message: M): Boolean =
+        when {
+            offer(message) -> true
+            isStopped -> true.also { tell(message) }
+            else -> false.also { dead(message, DeadLetter.Why.Full) }
+        }
 
     private fun tryAcquireRoom(): Boolean {
         while (true) {
