@@ -275,7 +275,12 @@ fun <M : Any, A : Any> ActorRef<M>.ask(within: Duration, message: (Reply<A>) -> 
     val reply = Answer<A>(Address(address.node, "/temp/ask-${asks.incrementAndGet()}", 1))
     val cell = this as? Cell<M, *, *>
     if (cell != null && !cell.expect(reply)) return AskFailure.Stopped.left()
-    tell(message(reply))
+    val asked = message(reply)
+    // A full mailbox ends at once rather than parking the asker or waiting out [within] (spec 0321).
+    if (!tryTell(asked)) {
+        cell?.forget(reply)
+        return AskFailure.MailboxFull.left()
+    }
     val answered = reply.done.await(within.inWholeNanoseconds, TimeUnit.NANOSECONDS)
     cell?.forget(reply)
     return if (answered) reply.outcome.get() else AskFailure.TimedOut.left()

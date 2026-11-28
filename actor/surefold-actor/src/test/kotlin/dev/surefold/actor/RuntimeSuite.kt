@@ -148,6 +148,21 @@ object RuntimeSuite : Suite() {
             answer shouldBe AskFailure.Stopped.left()
         }
 
+        test("an ask into a full mailbox ends with MailboxFull before its timeout") {
+            val answer = scope {
+                val release = CountDownLatch(1)
+                val full = spawn("full", log(), capacity = 1)
+                full.tell(Wait(release))
+                full.tell(Add(1))
+                val asked = full.ask(10.minutes) { Read(it) }
+                release.countDown()
+                awaitIdle()
+                asked
+            }
+
+            answer shouldBe AskFailure.MailboxFull.left()
+        }
+
         test("tryTell returns false on a full mailbox without failing the sender") {
             val letters = ConcurrentLinkedQueue<DeadLetter>()
             val taken = scope {
