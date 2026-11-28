@@ -368,6 +368,9 @@ sealed interface AskFailure {
      * 0318).
      */
     data object Discarded : AskFailure
+
+    /** The target's mailbox could not take the ask, so it never began a turn (spec 0321). */
+    data object MailboxFull : AskFailure
 }
 
 /**
