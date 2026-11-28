@@ -138,6 +138,29 @@ object EntitiesSuite : Suite() {
             log.filter { it.endsWith("started") } shouldContainExactly emptyList()
         }
 
+        test("around sees each entity's id on every turn") {
+            val seen = ConcurrentLinkedQueue<String>()
+            val kennel =
+                entities(
+                        passivateAfter = 10.minutes,
+                        around =
+                            Around(
+                                message = { id, _, run ->
+                                    seen += id
+                                    run()
+                                },
+                            ),
+                    ) { id ->
+                        pup(id, ConcurrentLinkedQueue())
+                    }
+                    .test("kennel")
+
+            kennel.entity("rex").tell(Feed(1))
+            kennel.entity("bo").tell(Feed(2))
+            kennel.entity("rex").ask(1.minutes) { Weight(it) } shouldBe ("rex" to 1).right()
+            seen.toList() shouldContainExactly listOf("rex", "bo", "rex")
+        }
+
         test("startIf does not discard a message for an entity that is already running") {
             val log = ConcurrentLinkedQueue<String>()
             val kennel =
