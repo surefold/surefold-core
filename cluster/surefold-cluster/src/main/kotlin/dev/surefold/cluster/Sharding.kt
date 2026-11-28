@@ -2,6 +2,7 @@ package dev.surefold.cluster
 
 import dev.surefold.actor.ActorRef
 import dev.surefold.actor.Address
+import dev.surefold.actor.Around
 import dev.surefold.actor.Behaviour
 import dev.surefold.actor.Ctx
 import dev.surefold.actor.Entities
@@ -228,6 +229,7 @@ fun <M : Any, S, E> Cluster.sharding(
     role: String? = null,
     rebalance: Rebalance? = null,
     startIf: (id: String, message: M) -> Boolean = { _, _ -> true },
+    around: Around<M> = Around(),
     entity: (id: String) -> Behaviour<M, S, E>,
 ): Sharded<M> {
     val path = Sharding.path(kind)
@@ -246,7 +248,13 @@ fun <M : Any, S, E> Cluster.sharding(
                 val counted = { delta: Int -> onRunning(delta).also { meter?.running(shard, delta) } }
                 ctx.spawn(
                     "shard-$shard",
-                    entities(passivateAfter, onRunning = counted, startIf = startIf, entity = entity),
+                    entities(
+                        passivateAfter,
+                        onRunning = counted,
+                        startIf = startIf,
+                        around = around,
+                        entity = entity,
+                    ),
                 )
             },
             // Counted once each message is handed to its entity here, which is the load a rebalance weighs (spec 0090).
