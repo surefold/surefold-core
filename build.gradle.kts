@@ -82,6 +82,8 @@ val moduleDescriptions =
             "surefold-stream for tests: every stage on the calling thread, on a clock the test owns.",
         "surefold-assert" to
             "Checks for tests of surefold code that fail at the test's own line, Either matchers among them.",
+        "surefold-gen" to
+            "Random generators for property checks: Gen, sample, and check that hits gotchas before noise.",
         "surefold-test" to
             "For tests of a surefold service: eventually on surefold's clock, and a test that reads as a story.",
         "surefold-junit" to
@@ -134,7 +136,14 @@ val compilerPlugins = setOf("surefold-app-compiler", "surefold-compiler", "suref
 
 // surefold-junit and what it runs on keep their tests on Jupiter: a runner cannot report on its own parts (spec 0197).
 val surefoldJunitRunsOn =
-    setOf("surefold", "surefold-assert", "surefold-test", "surefold-junit", "surefold-junit-testkit")
+    setOf(
+        "surefold",
+        "surefold-assert",
+        "surefold-gen",
+        "surefold-test",
+        "surefold-junit",
+        "surefold-junit-testkit",
+    )
 
 // Measured, not tested: a benchmark has no assertions for a coverage floor to count.
 val benchmarkModules = setOf("surefold-core-benchmarks")
