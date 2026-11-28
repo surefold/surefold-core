@@ -267,6 +267,44 @@ fun <M : Any, S, E> Behaviour<M, S, E>.onStart(handler: (ctx: Ctx<M>) -> Unit): 
 }
 
 /**
+ * This behaviour, with [message] wrapped around each turn and [life] around start (and each restart). [run] inside the
+ * wrappers is the inner turn or start; a throw from a wrapper fails the actor as a turn's would (spec 0320).
+ */
+fun <M : Any, S, E> Behaviour<M, S, E>.around(
+    message: (message: M, run: () -> Unit) -> Unit = { _, run -> run() },
+    life: (run: () -> Unit) -> Unit = { run -> run() },
+): Behaviour<M, S, E> {
+    val innerTurn = turn
+    val innerStart = start
+    val innerTurns = turns
+    return Behaviour(
+        initial,
+        { ctx, state, msg ->
+            var next: Next<S> = Next.Stay
+            message(msg) { next = innerTurn(this, ctx, state, msg) }
+            next
+        },
+        signal,
+        { ctx, state ->
+            var next: Next<S> = Next.Stay
+            life {
+                next = innerStart?.invoke(this, ctx, state) ?: Next.Stay
+            }
+            next
+        },
+        innerTurns?.let { batched ->
+            { ctx, state, messages ->
+                var result: Batched<S>? = null
+                // A batch is one turn for around's purposes: wrap the first message of the run.
+                message(messages.first()) { result = batched(this, ctx, state, messages) }
+                result!!
+            }
+        },
+        batch,
+    )
+}
+
+/**
  * A behaviour whose turn may raise [E]. Name all three types, `behaviour<M, S, E>(…)`: left to inference, a call
  * resolves to the overload that never raises.
  */
